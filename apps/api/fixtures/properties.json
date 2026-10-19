@@ -1,0 +1,512 @@
+[
+  {
+    "model": "accounts.user",
+    "pk": 900,
+    "fields": {
+      "password": "!axora-seed-owner-cannot-log-in",
+      "last_login": null,
+      "is_superuser": false,
+      "first_name": "Axora",
+      "last_name": "Seed Owner",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2026-10-01T08:00:00Z",
+      "email": "seed-owner@axora.test",
+      "phone": "",
+      "role": "owner",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "listings.property",
+    "pk": 1,
+    "fields": {
+      "owner": 900,
+      "title": "Spacious 2 bedroom flat at Fegge",
+      "slug": "spacious-2-bedroom-flat-at-fegge-onitsha",
+      "property_type": "room_parlour",
+      "price": "300000.00",
+      "state": "Anambra",
+      "city": "Onitsha",
+      "address": "Fegge",
+      "description": "A bright two bedroom flat with a large parlour, a fitted kitchen and two bathrooms, in a quiet compound at Fegge. Close to the main road, markets and schools. Water and prepaid light are available. Inspect before you pay anything.",
+      "bedrooms": 2,
+      "bathrooms": 2,
+      "amenities": [
+        "Prepaid meter",
+        "Running water",
+        "Tiled floors",
+        "Fenced compound",
+        "Parking space"
+      ],
+      "inspection_fee": "5000.00",
+      "status": "published",
+      "created_at": "2026-10-16T09:00:00Z",
+      "published_at": "2026-10-16T09:00:00Z",
+      "reviewed_by": null,
+      "reviewed_at": null
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 1,
+    "fields": {
+      "property": 1,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=1200&q=80",
+      "position": 0
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 2,
+    "fields": {
+      "property": 1,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1200&q=80",
+      "position": 1
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 3,
+    "fields": {
+      "property": 1,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1200&q=80",
+      "position": 2
+    }
+  },
+  {
+    "model": "listings.property",
+    "pk": 2,
+    "fields": {
+      "owner": 900,
+      "title": "Clean 2 bedroom flat off Woliwo Road",
+      "slug": "clean-2-bedroom-flat-off-woliwo-road-onitsha",
+      "property_type": "room_parlour",
+      "price": "300000.00",
+      "state": "Anambra",
+      "city": "Onitsha",
+      "address": "Woliwo Road",
+      "description": "A well kept two bedroom flat with a spacious parlour and ensuite master bedroom. Gated compound with steady water from a borehole. Free inspection.",
+      "bedrooms": 2,
+      "bathrooms": 2,
+      "amenities": [
+        "Prepaid meter",
+        "Borehole water",
+        "POP ceiling",
+        "Gated compound"
+      ],
+      "inspection_fee": "0.00",
+      "status": "published",
+      "created_at": "2026-10-15T09:00:00Z",
+      "published_at": "2026-10-15T09:00:00Z",
+      "reviewed_by": null,
+      "reviewed_at": null
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 4,
+    "fields": {
+      "property": 2,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=1200&q=80",
+      "position": 0
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 5,
+    "fields": {
+      "property": 2,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1200&q=80",
+      "position": 1
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 6,
+    "fields": {
+      "property": 2,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1200&q=80",
+      "position": 2
+    }
+  },
+  {
+    "model": "listings.property",
+    "pk": 3,
+    "fields": {
+      "owner": 900,
+      "title": "Neat self-contain near the university",
+      "slug": "neat-self-contain-near-the-university-awka",
+      "property_type": "self_contain",
+      "price": "180000.00",
+      "state": "Anambra",
+      "city": "Awka",
+      "address": "Close to Unizik",
+      "description": "A neat self-contain with its own kitchenette and bathroom, a short walk from the university. Good for a student, a corper or a single professional.",
+      "bedrooms": 1,
+      "bathrooms": 1,
+      "amenities": [
+        "Prepaid meter",
+        "Running water",
+        "Tiled floors",
+        "Security"
+      ],
+      "inspection_fee": "3000.00",
+      "status": "published",
+      "created_at": "2026-10-14T09:00:00Z",
+      "published_at": "2026-10-14T09:00:00Z",
+      "reviewed_by": null,
+      "reviewed_at": null
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 7,
+    "fields": {
+      "property": 3,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80",
+      "position": 0
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 8,
+    "fields": {
+      "property": 3,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&w=1200&q=80",
+      "position": 1
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 9,
+    "fields": {
+      "property": 3,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=1200&q=80",
+      "position": 2
+    }
+  },
+  {
+    "model": "listings.property",
+    "pk": 4,
+    "fields": {
+      "owner": 900,
+      "title": "3 bedroom flat in GRA",
+      "slug": "3-bedroom-flat-in-gra-enugu",
+      "property_type": "flat",
+      "price": "650000.00",
+      "state": "Enugu",
+      "city": "Enugu",
+      "address": "GRA",
+      "description": "A roomy three bedroom flat in a calm part of GRA, with fitted wardrobes, a big living room and secure parking. Quiet street, easy access to the city centre.",
+      "bedrooms": 3,
+      "bathrooms": 3,
+      "amenities": [
+        "Prepaid meter",
+        "Borehole water",
+        "Tiled floors",
+        "Fitted wardrobes",
+        "Parking space",
+        "Security"
+      ],
+      "inspection_fee": "5000.00",
+      "status": "published",
+      "created_at": "2026-10-12T09:00:00Z",
+      "published_at": "2026-10-12T09:00:00Z",
+      "reviewed_by": null,
+      "reviewed_at": null
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 10,
+    "fields": {
+      "property": 4,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1200&q=80",
+      "position": 0
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 11,
+    "fields": {
+      "property": 4,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1200&q=80",
+      "position": 1
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 12,
+    "fields": {
+      "property": 4,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1556912172-45b7abe8b7e1?auto=format&fit=crop&w=1200&q=80",
+      "position": 2
+    }
+  },
+  {
+    "model": "listings.property",
+    "pk": 5,
+    "fields": {
+      "owner": 900,
+      "title": "Modern 2 bedroom flat in Lekki Phase 1",
+      "slug": "modern-2-bedroom-flat-in-lekki-phase-1-lagos",
+      "property_type": "flat",
+      "price": "1800000.00",
+      "state": "Lagos",
+      "city": "Lekki",
+      "address": "Lekki Phase 1",
+      "description": "A modern two bedroom flat with air conditioning, a fitted kitchen and a private balcony. 24-hour security and reserved parking. Walking distance to shops and restaurants.",
+      "bedrooms": 2,
+      "bathrooms": 2,
+      "amenities": [
+        "Prepaid meter",
+        "Running water",
+        "Air conditioning",
+        "Fitted kitchen",
+        "Parking space",
+        "24-hour security"
+      ],
+      "inspection_fee": "10000.00",
+      "status": "published",
+      "created_at": "2026-10-10T09:00:00Z",
+      "published_at": "2026-10-10T09:00:00Z",
+      "reviewed_by": null,
+      "reviewed_at": null
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 13,
+    "fields": {
+      "property": 5,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80",
+      "position": 0
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 14,
+    "fields": {
+      "property": 5,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=80",
+      "position": 1
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 15,
+    "fields": {
+      "property": 5,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1200&q=80",
+      "position": 2
+    }
+  },
+  {
+    "model": "listings.property",
+    "pk": 6,
+    "fields": {
+      "owner": 900,
+      "title": "Room and parlour at Rumuokoro",
+      "slug": "room-and-parlour-at-rumuokoro-port-harcourt",
+      "property_type": "room_parlour",
+      "price": "250000.00",
+      "state": "Rivers",
+      "city": "Port Harcourt",
+      "address": "Rumuokoro",
+      "description": "A tidy room and parlour with a separate kitchen and bathroom in a fenced compound at Rumuokoro. Close to transport and the main road.",
+      "bedrooms": 1,
+      "bathrooms": 1,
+      "amenities": [
+        "Prepaid meter",
+        "Borehole water",
+        "Tiled floors",
+        "Fenced compound"
+      ],
+      "inspection_fee": "2000.00",
+      "status": "published",
+      "created_at": "2026-10-08T09:00:00Z",
+      "published_at": "2026-10-08T09:00:00Z",
+      "reviewed_by": null,
+      "reviewed_at": null
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 16,
+    "fields": {
+      "property": 6,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1523217582562-09d0def993a6?auto=format&fit=crop&w=1200&q=80",
+      "position": 0
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 17,
+    "fields": {
+      "property": 6,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&w=1200&q=80",
+      "position": 1
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 18,
+    "fields": {
+      "property": 6,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1554995207-c18c203602cb?auto=format&fit=crop&w=1200&q=80",
+      "position": 2
+    }
+  },
+  {
+    "model": "listings.property",
+    "pk": 7,
+    "fields": {
+      "owner": 900,
+      "title": "3 bedroom flat in Gwarinpa",
+      "slug": "3-bedroom-flat-in-gwarinpa-abuja",
+      "property_type": "flat",
+      "price": "2500000.00",
+      "state": "FCT",
+      "city": "Abuja",
+      "address": "Gwarinpa",
+      "description": "A spacious three bedroom flat in Gwarinpa with a fitted kitchen, wardrobes in every room and reserved parking. Quiet estate with security at the gate.",
+      "bedrooms": 3,
+      "bathrooms": 3,
+      "amenities": [
+        "Prepaid meter",
+        "Running water",
+        "Fitted kitchen",
+        "Wardrobes",
+        "Parking space",
+        "Security"
+      ],
+      "inspection_fee": "10000.00",
+      "status": "published",
+      "created_at": "2026-10-06T09:00:00Z",
+      "published_at": "2026-10-06T09:00:00Z",
+      "reviewed_by": null,
+      "reviewed_at": null
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 19,
+    "fields": {
+      "property": 7,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=1200&q=80",
+      "position": 0
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 20,
+    "fields": {
+      "property": 7,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=1200&q=80",
+      "position": 1
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 21,
+    "fields": {
+      "property": 7,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80",
+      "position": 2
+    }
+  },
+  {
+    "model": "listings.property",
+    "pk": 8,
+    "fields": {
+      "owner": 900,
+      "title": "4 bedroom duplex in New Owerri",
+      "slug": "4-bedroom-duplex-in-new-owerri-owerri",
+      "property_type": "duplex",
+      "price": "1500000.00",
+      "state": "Imo",
+      "city": "Owerri",
+      "address": "New Owerri",
+      "description": "A family duplex with four bedrooms, a large living area and a boys quarters, in a gated compound in New Owerri. Space for several cars.",
+      "bedrooms": 4,
+      "bathrooms": 4,
+      "amenities": [
+        "Prepaid meter",
+        "Borehole water",
+        "Boys quarters",
+        "Generator house",
+        "Gated compound"
+      ],
+      "inspection_fee": "5000.00",
+      "status": "published",
+      "created_at": "2026-10-04T09:00:00Z",
+      "published_at": "2026-10-04T09:00:00Z",
+      "reviewed_by": null,
+      "reviewed_at": null
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 22,
+    "fields": {
+      "property": 8,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80",
+      "position": 0
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 23,
+    "fields": {
+      "property": 8,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1560185007-cde436f6a4d0?auto=format&fit=crop&w=1200&q=80",
+      "position": 1
+    }
+  },
+  {
+    "model": "listings.propertyphoto",
+    "pk": 24,
+    "fields": {
+      "property": 8,
+      "image": "",
+      "external_url": "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=1200&q=80",
+      "position": 2
+    }
+  },
+  {
+    "model": "pages.sitesettings",
+    "pk": 1,
+    "fields": {
+      "bank_name": "Demo Bank (replace in admin)",
+      "account_name": "Axora Finds (demo account)",
+      "account_number": "0000000000",
+      "transfer_note": "Use your payment reference as the transfer narration.",
+      "is_live": false
+    }
+  }
+]

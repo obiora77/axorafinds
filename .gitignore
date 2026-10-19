@@ -1,0 +1,25 @@
+# env and secrets
+.env
+.env.*
+!.env.example
+
+# node
+node_modules/
+dist/
+*.log
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# django
+apps/api/db.sqlite3
+apps/api/media/
+apps/api/staticfiles/
+
+# os / editors
+.DS_Store
+.idea/
+.vscode/

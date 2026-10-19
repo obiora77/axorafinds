@@ -1,0 +1,12 @@
+{
+  "name": "axora-finds",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Axora Finds - verified rental listings and inspection requests for Nigeria (Vue + Django).",
+  "scripts": {
+    "dev:web": "npm --prefix apps/web run dev",
+    "build:web": "npm --prefix apps/web run build",
+    "typecheck:web": "npm --prefix apps/web run typecheck",
+    "install:web": "npm --prefix apps/web install"
+  }
+}

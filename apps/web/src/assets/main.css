@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #e10600;
+  --color-brand-dark: #b80500;
+  --color-ink: #1a1a1a;
+  --color-muted: #5c6570;
+  --color-line: #e6e8ec;
+  --color-footer: #121212;
+  --font-sans: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Bricolage Grotesque", "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-brand font-sans text-base text-ink antialiased;
+    overflow-x: clip;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-ink);
+    outline-offset: 2px;
+  }
+  .on-red :focus-visible,
+  .on-dark :focus-visible {
+    outline-color: #fff;
+  }
+  img {
+    max-width: 100%;
+  }
+}
+
+@layer components {
+  .page-wrap {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+  }
+
+  /* The white main panel that sits on the red page. */
+  .panel {
+    @apply rounded-t-[28px] bg-white lg:rounded-t-[40px];
+    min-height: 60vh;
+  }
+
+  .btn {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-6 py-2.5 text-base font-semibold transition-colors duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary {
+    @apply bg-brand text-white hover:bg-brand-dark;
+  }
+  .btn-light {
+    @apply bg-white text-brand hover:bg-white/90;
+  }
+  .btn-outline {
+    @apply border border-line bg-white text-ink hover:border-ink;
+  }
+
+  .label {
+    @apply mb-1.5 block text-sm font-semibold text-ink;
+  }
+  .input {
+    @apply block min-h-11 w-full rounded-xl border border-line bg-white px-3.5 py-2 text-base text-ink placeholder:text-muted focus:border-ink;
+  }
+  .input[aria-invalid="true"] {
+    @apply border-brand;
+  }
+  .field-error {
+    @apply mt-1.5 text-sm font-medium text-brand;
+  }
+  .hint {
+    @apply mt-1.5 text-sm text-muted;
+  }
+
+  .nav-link {
+    @apply inline-flex min-h-11 items-center rounded-full px-4 text-base font-semibold text-white transition-colors duration-200 ease-out hover:bg-white/15 aria-[current=page]:bg-white aria-[current=page]:text-brand;
+  }
+
+  .badge-rent {
+    @apply inline-flex items-center rounded-full bg-brand px-3 py-1 text-xs font-bold text-white;
+  }
+}
+
+/* Route changes: Vue <Transition>, 150-200ms ease-out. */
+.page-enter-active {
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+.page-leave-active {
+  transition: opacity 150ms ease-out;
+}
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.page-leave-to {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 400" fill="none">
+  <ellipse cx="260" cy="352" rx="228" ry="22" fill="#fff" opacity=".18"/>
+  <!-- tree -->
+  <rect x="64" y="248" width="14" height="104" rx="5" fill="#1A1A1A"/>
+  <circle cx="71" cy="230" r="46" fill="#fff"/>
+  <circle cx="44" cy="262" r="28" fill="#fff"/>
+  <circle cx="100" cy="266" r="26" fill="#fff"/>
+  <!-- house -->
+  <rect x="150" y="172" width="220" height="168" fill="#fff"/>
+  <rect x="318" y="96" width="26" height="62" fill="#1A1A1A"/>
+  <polygon points="126,184 260,78 394,184" fill="#1A1A1A"/>
+  <polygon points="150,184 260,98 370,184" fill="#2A2A2A"/>
+  <rect x="238" y="246" width="44" height="94" rx="4" fill="#1A1A1A"/>
+  <circle cx="272" cy="296" r="3.5" fill="#fff"/>
+  <g fill="#E6E8EC" stroke="#1A1A1A" stroke-width="4">
+    <rect x="174" y="204" width="48" height="48" rx="3"/>
+    <rect x="298" y="204" width="48" height="48" rx="3"/>
+  </g>
+  <g stroke="#1A1A1A" stroke-width="3">
+    <path d="M198 204v48M174 228h48M322 204v48M298 228h48"/>
+  </g>
+  <rect x="226" y="340" width="68" height="9" rx="2" fill="#E6E8EC"/>
+  <!-- fence -->
+  <g fill="#fff" opacity=".9">
+    <rect x="396" y="312" width="8" height="40" rx="2"/>
+    <rect x="416" y="312" width="8" height="40" rx="2"/>
+    <rect x="436" y="312" width="8" height="40" rx="2"/>
+    <rect x="456" y="312" width="8" height="40" rx="2"/>
+    <rect x="392" y="326" width="76" height="6" rx="2"/>
+  </g>
+  <!-- verified badge -->
+  <circle cx="412" cy="118" r="52" fill="#fff" opacity=".3"/>
+  <circle cx="412" cy="118" r="40" fill="#fff"/>
+  <path d="M393 119l14 14 27-30" stroke="#E10600" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
