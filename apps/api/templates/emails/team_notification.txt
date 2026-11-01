@@ -1,0 +1,12 @@
+{% autoescape off %}{{ heading }}
+
+{{ intro }}
+{% if details %}
+{% include "emails/_details.txt" %}
+{% endif %}{% if message %}
+Message:
+{{ message }}
+{% endif %}
+
+This message was sent automatically by the Axora Finds website.
+{% endautoescape %}

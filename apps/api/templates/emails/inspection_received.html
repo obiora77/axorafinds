@@ -1,0 +1,31 @@
+{% extends "emails/base.html" %}
+{% block title %}Inspection request received{% endblock %}
+{% block content %}
+  <h1 style="margin:0 0 12px;font-size:24px;line-height:1.3;color:#1a1a1a;">Hi {{ name }},</h1>
+  <p style="margin:0 0 14px;">
+    We received your inspection request for <strong>{{ property_title }}</strong> in {{ property_location }}.
+    Your reference is <strong>{{ reference }}</strong>.
+  </p>
+  {% include "emails/_details.html" %}
+
+  {% if has_fee and is_transfer %}
+    <p style="margin:0 0 14px;">
+      To view the official bank account details, return to the listing page.
+      For your security, we do not include bank details in email.
+    </p>
+  {% elif has_fee %}
+    <p style="margin:0 0 14px;">
+      Please have the inspection fee ready when you meet the agent.
+    </p>
+  {% else %}
+    <p style="margin:0 0 14px;">There is no inspection fee for this property.</p>
+  {% endif %}
+
+  <p style="margin:0 0 14px;">
+    Your request is pending. Our team will contact you on {{ phone }} to confirm the date and time.
+  </p>
+  <p style="margin:22px 0;">
+    <a href="{{ property_url }}" style="display:inline-block;background:#e10600;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:8px;">View the listing</a>
+  </p>
+  <p style="margin:0;color:#5c6570;font-size:13px;">Keep your reference for any questions: {{ reference }}.</p>
+{% endblock %}

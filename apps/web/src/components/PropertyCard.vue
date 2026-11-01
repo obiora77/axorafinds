@@ -29,7 +29,7 @@ async function onHeart(): Promise<void> {
   }
   if (!auth.isSeeker) return
   try {
-    await favorites.toggle(props.property.id)
+    await favorites.toggle(props.property)
   } catch {
     /* the store already rolled the heart back */
   }

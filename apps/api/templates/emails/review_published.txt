@@ -1,0 +1,14 @@
+{% autoescape off %}Your review is live
+
+Your review is now on the Axora Finds home page. Thank you for helping other renters.
+
+{% include "emails/_details.txt" %}
+
+{{ text }}
+
+See your review: {{ reviews_url }}
+
+--
+{{ brand_name }} - Verified rentals across Nigeria
+{{ site_url }}
+{% endautoescape %}

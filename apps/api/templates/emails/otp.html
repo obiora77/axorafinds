@@ -1,0 +1,17 @@
+{% extends "emails/base.html" %}
+{% block title %}Your otp code{% endblock %}
+{% block content %}
+  <p>Hello <strong>{{ user_name }}</strong>,</p>
+  <p>You requested a verification code for <strong>{{ title }}</strong>. Use the code below:</p>
+
+  <div class="amount-box">
+    <div class="amount" style="letter-spacing: 12px;">{{ otp_code }}</div>
+    <div class="label">This code expires in {{ expiry_minutes }} minutes</div>
+  </div>
+
+  <div class="warning-note">
+    ⚠️ Never share this code with anyone. Axora Finds staff will never ask for your OTP.
+  </div>
+
+  <p style="margin-top: 24px;">If you did not request this, please ignore this email or contact support immediately at <a href="mailto:axorafindsteam@gmail.com">axorafindsteam@gmail.com</a>.</p>
+{% endblock %}

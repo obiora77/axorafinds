@@ -1,0 +1,15 @@
+{% autoescape off %}Your inspection is confirmed
+
+Hi {{ name }}, your inspection of {{ property_title }} on {{ preferred_date_display }} is confirmed. Your reference is {{ reference }}.
+
+{% include "emails/_details.txt" %}
+{% if property_address %}Address: {{ property_address }}
+
+{% endif %}Our team will meet you there. If you need to change anything, reply to this email or call us.
+
+View the listing: {{ property_url }}
+
+--
+{{ brand_name }} - Verified rentals across Nigeria
+{{ site_url }}
+{% endautoescape %}

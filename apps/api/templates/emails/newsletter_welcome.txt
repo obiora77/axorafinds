@@ -1,0 +1,12 @@
+{% autoescape off %}You are subscribed
+
+Thanks for subscribing to Axora Finds updates. We will email you when new verified homes are listed, so you can inspect them before everyone else.
+
+Browse verified homes: {{ browse_url }}
+
+If you did not subscribe, reply to this email and our team will remove this address.
+
+--
+{{ brand_name }} - Verified rentals across Nigeria
+{{ site_url }}
+{% endautoescape %}

@@ -1,0 +1,14 @@
+{% autoescape off %}Thanks for your review
+
+Thank you for sharing your experience with Axora Finds. Your review will appear on the home page once our team approves it.
+
+{% include "emails/_details.txt" %}
+
+{{ text }}
+
+If you need to change anything, reply to this email.
+
+--
+{{ brand_name }} - Verified rentals across Nigeria
+{{ site_url }}
+{% endautoescape %}

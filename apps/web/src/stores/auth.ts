@@ -20,6 +20,9 @@ export const useAuthStore = defineStore('auth', () => {
   const role = computed<Role | null>(() => user.value?.role ?? null)
   const isOwner = computed(() => role.value === 'owner')
   const isSeeker = computed(() => role.value === 'seeker')
+  // The API gate is `is_staff`, so mirror it here: any Django staff account or
+  // superuser reaches the dashboard, even if its role is not "staff".
+  const isStaff = computed(() => user.value?.is_staff === true || role.value === 'staff')
 
   function startSession(response: AuthResponse): void {
     tokenStore.set(response.access, response.refresh)
@@ -52,6 +55,23 @@ export const useAuthStore = defineStore('auth', () => {
     startSession(await apiFetch<AuthResponse>('/auth/register', { method: 'POST', body: payload, auth: false }))
   }
 
+  async function verifyOtp(email: string, code: string, purpose: 'signup' | 'password_reset' = 'signup'): Promise<void> {
+    const result = await apiFetch<AuthResponse & { detail: string}>('/auth/verify-otp', { method: 'POST', body: { email, code, purpose }, auth: false })
+    if (purpose === 'signup') startSession(result)  
+  }
+
+  async function resendOtp(email: string, purpose: 'signup' | 'password_reset' = 'signup'): Promise<void> {
+    await apiFetch('/auth/resend-otp', { method: 'POST', body: { email, purpose }, auth: false })
+  }
+
+  async function requestPasswordReset(email: string): Promise<void> {
+    await apiFetch('/auth/password-reset/request', { method: 'POST', body: { email }, auth: false })
+  }
+
+  async function confirmPasswordReset(email: string, code: string, password: string): Promise<void> {
+    await apiFetch('/auth/password-reset/confirm', { method: 'POST', body: { email, code, password }, auth: false })
+  }
+
   function logout(): void {
     tokenStore.clear()
     user.value = null
@@ -64,5 +84,5 @@ export const useAuthStore = defineStore('auth', () => {
     useFavoritesStore().reset()
   })
 
-  return { user, ready, isAuthed, role, isOwner, isSeeker, restore, login, register, logout }
+  return { user, ready, isAuthed, role, isOwner, isSeeker, isStaff, restore, login, register, verifyOtp, resendOtp, requestPasswordReset, confirmPasswordReset, logout }
 })

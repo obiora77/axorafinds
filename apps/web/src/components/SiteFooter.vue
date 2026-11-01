@@ -10,7 +10,12 @@ import { LEGAL_LINKS, QUICK_LINKS, SITE } from '@/lib/site'
     <div class="page-wrap py-12">
       <div class="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
         <div>
-          <img src="/logo.svg" alt="Axora Finds" width="138" height="32" class="h-8 w-auto" />
+          <RouterLink to="/" class="flex min-h-11 items-center" aria-label="Axora Finds, home">
+            <img src="/logo.png" alt="" width="138" height="32" class="h-8 w-auto" />
+            <span class="text-xl font-bold tracking-wide">
+              AXORA
+            </span>
+          </RouterLink>
           <h2 class="mt-5 text-xl font-bold leading-snug">List Your Properties, Reach More People Faster.</h2>
           <RouterLink to="/list-property" class="btn btn-primary mt-5">List your property</RouterLink>
         </div>

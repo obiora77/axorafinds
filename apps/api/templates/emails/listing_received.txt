@@ -1,0 +1,14 @@
+{% autoescape off %}We received your listing
+
+Thank you for submitting {{ title }}. Our team will check the details and photos before it goes live.
+
+{% include "emails/_details.txt" %}
+
+Your listing is pending review. We will email you as soon as it is published, or if we need anything changed.
+
+You can reply to this email if you need to update anything.
+
+--
+{{ brand_name }} - Verified rentals across Nigeria
+{{ site_url }}
+{% endautoescape %}

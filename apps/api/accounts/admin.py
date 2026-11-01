@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.forms import BaseUserCreationForm, UserChangeForm as DjangoUserChangeForm
 
-from .models import User
+from .models import Role, User
 
 
 class UserCreationForm(BaseUserCreationForm):
@@ -34,3 +34,10 @@ class UserAdmin(DjangoUserAdmin):
     add_fieldsets = (
         (None, {'classes': ('wide',), 'fields': ('email', 'first_name', 'last_name', 'role', 'password1', 'password2')}),
     )
+
+    def save_related(self, request, form, formsets, change):
+        # Runs after the change form's user_permissions widget has been saved, so a
+        # staff account keeps the model permissions its queues need.
+        super().save_related(request, form, formsets, change)
+        if form.instance.role == Role.STAFF and not form.instance.is_superuser:
+            form.instance._grant_staff_permissions()

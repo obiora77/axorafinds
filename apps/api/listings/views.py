@@ -2,6 +2,7 @@ from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import mixins, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -10,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.permissions import IsOwnerRole, IsSeekerRole
+from config.emails import send_listing_received_email, send_listing_team_email
 
 from .filters import PropertyFilter
 from .models import Favorite, Property, PropertyPhoto, Status
@@ -34,6 +36,7 @@ class PropertyViewSet(
 ):
     """
     GET  /api/properties          public, published only
+    GET  /api/properties/mine     owner accounts, their own listings in every state
     GET  /api/properties/:slug    public, published only
     POST /api/properties          owner accounts, multipart, always saved as pending
     """
@@ -50,18 +53,30 @@ class PropertyViewSet(
         return published_properties()
 
     def get_permissions(self):
-        return [IsOwnerRole()] if self.action == 'create' else [AllowAny()]
+        return [IsOwnerRole()] if self.action in {'create', 'mine'} else [AllowAny()]
 
     def get_serializer_class(self):
         if self.action == 'create':
             return PropertyCreateSerializer
-        return PropertyDetailSerializer if self.action == 'retrieve' else PropertyCardSerializer
+        return PropertyDetailSerializer if self.action in {'retrieve', 'mine'} else PropertyCardSerializer
+
+    @action(detail=False, methods=['get'])
+    def mine(self, request):
+        """The signed-in owner's listings, including those still waiting for review."""
+        props = (
+            Property.objects.filter(owner=request.user)
+            .prefetch_related(Prefetch('photos', queryset=PropertyPhoto.objects.order_by('position', 'id')))
+            .order_by('-created_at', '-id')
+        )
+        return Response(PropertyDetailSerializer(props, many=True, context=self.get_serializer_context()).data)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         prop = serializer.save()
         prop = Property.objects.prefetch_related('photos').get(pk=prop.pk)
+        send_listing_received_email(prop)
+        send_listing_team_email(prop)
         data = PropertyDetailSerializer(prop, context=self.get_serializer_context()).data
         return Response(data, status=status.HTTP_201_CREATED)
 

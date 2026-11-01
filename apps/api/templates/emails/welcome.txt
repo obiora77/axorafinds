@@ -1,0 +1,19 @@
+{% autoescape off %}Welcome, {{ first_name }}
+
+Your {{ role|lower }} account is ready.
+{% if is_owner %}
+Add your property, upload clear photos and send it for review. Our team checks every listing before it goes live.
+
+List a property: {{ list_url }}
+{% else %}
+Browse verified homes, save the ones you like, and request an inspection when you are ready.
+
+Browse homes: {{ browse_url }}
+{% endif %}
+
+If you did not create this account, reply to this email and our team will help.
+
+--
+{{ brand_name }} - Verified rentals across Nigeria
+{{ site_url }}
+{% endautoescape %}

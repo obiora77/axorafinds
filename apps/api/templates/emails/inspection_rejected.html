@@ -1,0 +1,18 @@
+{% extends "emails/base.html" %}
+{% block title %}Inspection could not be confirmed{% endblock %}
+{% block content %}
+  <h1 style="margin:0 0 12px;font-size:24px;line-height:1.3;color:#1a1a1a;">We could not confirm this inspection</h1>
+  <p style="margin:0 0 14px;">
+    Hi {{ name }}, unfortunately we could not confirm your inspection request
+    <strong>{{ reference }}</strong> for {{ property_title }}.
+  </p>
+  {% include "emails/_details.html" %}
+  <p style="margin:0 0 14px;">
+    This can happen when the preferred date is no longer available or we could not reach you.
+    You are welcome to request another inspection from the listing page.
+  </p>
+  <p style="margin:22px 0;">
+    <a href="{{ site_url }}/properties" style="display:inline-block;background:#e10600;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:8px;">Browse other homes</a>
+  </p>
+  <p style="margin:0;color:#5c6570;font-size:13px;">If you already paid, reply to this email and our team will help.</p>
+{% endblock %}

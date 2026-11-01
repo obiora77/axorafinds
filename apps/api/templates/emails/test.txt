@@ -1,0 +1,12 @@
+{% autoescape off %}Email is working
+
+If you received this message, the email settings are working. This is a test from the Axora Finds website, sent {{ sent_at_display }}.
+
+{% include "emails/_details.txt" %}
+
+No action is needed. You can safely ignore this message.
+
+--
+{{ brand_name }} - Verified rentals across Nigeria
+{{ site_url }}
+{% endautoescape %}

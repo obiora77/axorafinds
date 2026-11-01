@@ -17,3 +17,13 @@ class IsSeekerRole(BasePermission):
     def has_permission(self, request, view):
         user = request.user
         return bool(user and user.is_authenticated and user.role == Role.SEEKER)
+
+
+class IsStaffRole(BasePermission):
+    """Django staff (role ``staff`` sets ``is_staff`` on save) can use the staff API."""
+
+    message = 'Staff access only.'
+
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(user and user.is_authenticated and user.is_staff)

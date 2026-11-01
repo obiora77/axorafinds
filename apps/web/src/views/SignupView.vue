@@ -41,15 +41,14 @@ const [role] = defineField('role')
 const onSubmit = handleSubmit(async (values) => {
   submitError.value = ''
   try {
-    await auth.register({
+    const result = await auth.register({
       name: values.name,
       email: values.email,
       password: values.password,
       role: values.role,
       ...(values.phone ? { phone: values.phone } : {}),
     })
-    const fallback = values.role === 'owner' ? '/list-property' : '/properties'
-    await router.push(safeRedirect(route.query.redirect, fallback))
+    await router.push({ name: 'otp', query: { email: result.email, purpose: 'signup', redirect: route.query.redirect, role: values.role } })
   } catch (e) {
     const parsed = parseApiError(e)
     submitError.value = parsed.message

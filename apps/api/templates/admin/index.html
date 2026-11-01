@@ -1,0 +1,97 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static admin_filters staff_stats %}
+
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static "admin/css/dashboard.css" %}" {% csp_nonce_attr %}>{% endblock %}
+
+{% block coltype %}colMS{% endblock %}
+
+{% block bodyclass %}{{ block.super }} dashboard{% endblock %}
+
+{% block nav-breadcrumbs %}{% endblock %}
+
+{% block nav-sidebar %}{% endblock %}
+
+{% block content %}
+{% staff_stats as stats %}
+<div class="module" id="axora-staff-queue" style="margin-bottom:20px;">
+  <h2>Axora Finds queue</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;padding:0 16px 14px;">
+    <a href="{% url 'admin:listings_property_changelist' %}?status__exact=pending" style="display:block;padding:12px;border:1px solid var(--hairline-color,#d5d5d5);border-radius:8px;text-decoration:none;color:inherit;">
+      <div style="font-size:26px;font-weight:700;line-height:1.2;">{{ stats.listings.pending }}</div>
+      <div>Listings to review</div>
+    </a>
+    <a href="{% url 'admin:inspections_inspection_changelist' %}?status__exact=pending" style="display:block;padding:12px;border:1px solid var(--hairline-color,#d5d5d5);border-radius:8px;text-decoration:none;color:inherit;">
+      <div style="font-size:26px;font-weight:700;line-height:1.2;">{{ stats.inspections.pending }}</div>
+      <div>Inspections pending</div>
+    </a>
+    <a href="{% url 'admin:inspections_inspection_changelist' %}?payment_status__exact=unpaid" style="display:block;padding:12px;border:1px solid var(--hairline-color,#d5d5d5);border-radius:8px;text-decoration:none;color:inherit;">
+      <div style="font-size:26px;font-weight:700;line-height:1.2;">{{ stats.inspections.awaiting_payment }}</div>
+      <div>Payments to verify</div>
+    </a>
+    <a href="{% url 'admin:inspections_inspection_changelist' %}?status__exact=pending" style="display:block;padding:12px;border:1px solid var(--hairline-color,#d5d5d5);border-radius:8px;text-decoration:none;color:inherit;">
+      <div style="font-size:26px;font-weight:700;line-height:1.2;">{{ stats.inspections.ready_to_confirm }}</div>
+      <div>Ready to confirm</div>
+    </a>
+    <a href="{% url 'admin:pages_review_changelist' %}?is_published__exact=0" style="display:block;padding:12px;border:1px solid var(--hairline-color,#d5d5d5);border-radius:8px;text-decoration:none;color:inherit;">
+      <div style="font-size:26px;font-weight:700;line-height:1.2;">{{ stats.reviews.pending }}</div>
+      <div>Reviews to moderate</div>
+    </a>
+    <a href="{% url 'admin:pages_contactmessage_changelist' %}" style="display:block;padding:12px;border:1px solid var(--hairline-color,#d5d5d5);border-radius:8px;text-decoration:none;color:inherit;">
+      <div style="font-size:26px;font-weight:700;line-height:1.2;">{{ stats.contacts }}</div>
+      <div>Contact messages</div>
+    </a>
+    <a href="{% url 'admin:pages_newslettersubscriber_changelist' %}" style="display:block;padding:12px;border:1px solid var(--hairline-color,#d5d5d5);border-radius:8px;text-decoration:none;color:inherit;">
+      <div style="font-size:26px;font-weight:700;line-height:1.2;">{{ stats.subscribers }}</div>
+      <div>Newsletter subscribers</div>
+    </a>
+  </div>
+  <p style="margin:0;padding:0 16px 16px;">
+    Email:
+    <strong>{{ stats.email.enabled|yesno:"configured,not configured" }}</strong>
+    <span class="quiet">({{ stats.email.backend }}{% if stats.email.host %}, {{ stats.email.host }}{% endif %})</span>
+    {% if stats.email.missing_templates %}
+      &middot; <strong style="color:#ba2121;">{{ stats.email.missing_templates|length }} template file(s) missing</strong>
+    {% endif %}
+    {% if stats.email.last_error %}
+      &middot; <strong style="color:#ba2121;">Last error: {{ stats.email.last_error }}</strong>
+    {% endif %}
+    &middot; <a href="{% url 'admin:pages_sitesettings_email_test' %}">Send a test email</a>
+  </p>
+</div>
+<div id="content-main" class="app-list">
+  {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+</div>
+{% endblock %}
+
+{% block sidebar %}
+<div id="content-related">
+    <div class="module" id="recent-actions-module">
+        <h2>{% translate 'Recent actions' %}</h2>
+        <h3>{% translate 'My actions' %}</h3>
+            {% load log %}
+            {% get_admin_log 10 as admin_log for_user user %}
+            {% if not admin_log %}
+            <p>{% translate 'None available' %}</p>
+            {% else %}
+            <ul class="actionlist">
+            {% for entry in admin_log %}
+            <li class="{% if entry.is_addition %}addlink{% endif %}{% if entry.is_change %}changelink{% endif %}{% if entry.is_deletion %}deletelink{% endif %}">
+                <span class="visually-hidden">{% if entry.is_addition %}{% translate 'Added:' %}{% elif entry.is_change %}{% translate 'Changed:' %}{% elif entry.is_deletion %}{% translate 'Deleted:' %}{% endif %}</span>
+                {% if entry.is_deletion or not entry.get_admin_url %}
+                    {{ entry.object_repr|to_object_display_value }}
+                {% else %}
+                    <a href="{{ entry.get_admin_url }}">{{ entry.object_repr|to_object_display_value }}</a>
+                {% endif %}
+                <br>
+                {% if entry.content_type %}
+                    <span class="mini quiet">{% filter capfirst %}{{ entry.content_type.name }}{% endfilter %}</span>
+                {% else %}
+                    <span class="mini quiet">{% translate 'Unknown content' %}</span>
+                {% endif %}
+            </li>
+            {% endfor %}
+            </ul>
+            {% endif %}
+    </div>
+</div>
+{% endblock %}

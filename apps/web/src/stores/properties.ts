@@ -26,6 +26,12 @@ export const usePropertiesStore = defineStore('properties', () => {
   const latest = ref<PropertyCardData[]>([])
   const latestLoading = ref(false)
   const latestError = ref('')
+  const total = ref(0)
+
+  // An owner's own listings, at every stage of review
+  const mine = ref<PropertyDetailData[]>([])
+  const mineLoading = ref(false)
+  const mineError = ref('')
 
   async function fetchList(filters: PropertyFilters = {}, append = false): Promise<void> {
     const mine = ++sequence
@@ -56,16 +62,30 @@ export const usePropertiesStore = defineStore('properties', () => {
     return fetchList(filters, true)
   }
 
-  async function fetchLatest(size = 4): Promise<void> {
+  async function fetchLatest(size = 8): Promise<void> {
     latestLoading.value = true
     latestError.value = ''
     try {
       const data = await apiFetch<Paged<PropertyCardData>>('/properties', { query: { page: 1, page_size: size } })
       latest.value = data.results
+      total.value = data.count
     } catch (e) {
       latestError.value = parseApiError(e).message
     } finally {
       latestLoading.value = false
+    }
+  }
+
+  async function fetchMine(): Promise<void> {
+    mineLoading.value = true
+    mineError.value = ''
+    mine.value = []
+    try {
+      mine.value = await apiFetch<PropertyDetailData[]>('/properties/mine')
+    } catch (e) {
+      mineError.value = parseApiError(e).message
+    } finally {
+      mineLoading.value = false
     }
   }
 
@@ -80,7 +100,8 @@ export const usePropertiesStore = defineStore('properties', () => {
 
   return {
     items, count, hasMore, loading, error,
-    latest, latestLoading, latestError,
-    fetchList, loadMore, fetchLatest, fetchOne, create,
+    latest, latestLoading, latestError, total,
+    mine, mineLoading, mineError,
+    fetchList, loadMore, fetchLatest, fetchMine, fetchOne, create,
   }
 })

@@ -1,0 +1,13 @@
+{% autoescape off %}Thanks, {{ name }}
+
+We received your message and a member of our team will get back to you soon.
+
+Your message:
+{{ message }}
+
+You can reply to this email if you need to add anything.
+
+--
+{{ brand_name }} - Verified rentals across Nigeria
+{{ site_url }}
+{% endautoescape %}

@@ -1,0 +1,13 @@
+{% autoescape off %}Your listing is live
+
+{{ title }} is now published on Axora Finds. Visitors can find it at the link below.
+
+{% include "emails/_details.txt" %}
+{% if property_url %}
+View your listing: {{ property_url }}
+{% endif %}
+
+--
+{{ brand_name }} - Verified rentals across Nigeria
+{{ site_url }}
+{% endautoescape %}

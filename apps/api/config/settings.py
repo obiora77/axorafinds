@@ -70,7 +70,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -133,6 +133,7 @@ REST_FRAMEWORK = {
         'payments': '60/hour',
         'newsletter': '20/hour',
         'contact': '20/hour',
+        'reviews': '5/hour',
     },
 }
 
@@ -147,14 +148,32 @@ CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS', 'http://localhost:5173')
 CORS_ALLOW_HEADERS = (*default_headers, 'x-inspection-token')
 CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173')
 
-# --- Email: only used when EMAIL_HOST is set. Otherwise requests are stored and shown in admin. ---
-EMAIL_HOST = os.getenv('EMAIL_HOST', '')
+# --- Email: set EMAIL_HOST to send through SMTP; otherwise use a console/locmem backend. ---
+# Every message is rendered from apps/api/templates/emails/. See config/emails.py.
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587') or 587)
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+
 EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', True)
-TEAM_EMAIL = os.getenv('TEAM_EMAIL', 'axorafinds@gmail.com')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Axora Finds <axorafinds@gmail.com>')
+EMAIL_USE_SSL = env_bool('EMAIL_USE_SSL', False)
+
+EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '30'))
+TEAM_EMAIL = os.getenv('TEAM_EMAIL', 'axorafindsteam@gmail.com')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Axora Finds <no-reply@gmail.com>')
+
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+# Absolute frontend URL used for links inside emails (no trailing slash).
+SITE_URL = os.getenv('SITE_URL', 'http://localhost:5173').rstrip('/')
+
+if not EMAIL_BACKEND:
+    if EMAIL_HOST:
+        EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    elif DEBUG:
+        EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    else:
+        EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
 
 # --- Production hardening (applies when DJANGO_DEBUG is off) ---
 if not DEBUG:

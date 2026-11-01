@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -68,3 +70,31 @@ class ContactMessage(models.Model):
 
     def __str__(self):
         return f'{self.name} <{self.email}>'
+
+
+class Review(models.Model):
+    """
+    A testimonial for the home page. Signed-in visitors can submit one; like listings,
+    it stays hidden until a staff member publishes it in Django admin.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='reviews'
+    )
+    name = models.CharField(max_length=80)
+    location = models.CharField(max_length=80, blank=True, help_text='For example: Onitsha, Anambra State.')
+    rating = models.PositiveSmallIntegerField(
+        choices=[(n, f'{n} star{"s" if n != 1 else ""}') for n in range(1, 6)],
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
+    text = models.TextField(max_length=600)
+    is_published = models.BooleanField(
+        default=False, db_index=True, help_text='Only published reviews appear on the home page.'
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.name}: {self.rating}/5'

@@ -7,6 +7,7 @@ declare module 'vue-router' {
   interface RouteMeta {
     title?: string
     requiresAuth?: boolean
+    requiresStaff?: boolean
     guestOnly?: boolean
   }
 }
@@ -41,10 +42,28 @@ const router = createRouter({
     { path: '/about', name: 'about', component: () => import('@/views/AboutView.vue'), meta: { title: 'About' } },
     { path: '/contact', name: 'contact', component: () => import('@/views/ContactView.vue'), meta: { title: 'Contact' } },
     {
+      path: '/admin',
+      name: 'admin',
+      component: () => import('@/views/AdminView.vue'),
+      meta: { title: 'Staff dashboard', requiresAuth: true, requiresStaff: true },
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('@/views/LoginView.vue'),
       meta: { title: 'Login', guestOnly: true },
+    },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: () => import('@/views/ResetPassword.vue'),
+      meta: { title: 'RestPassword', guestOnly: true},
+    },
+    {
+      path: '/otp',
+      name: 'otp',
+      component: () => import('@/views/OtpView.vue'),
+      meta: { title: 'Otp'}
     },
     {
       path: '/signup',
@@ -68,6 +87,10 @@ router.beforeEach(async (to) => {
   await auth.restore()
   if (to.meta.requiresAuth && !auth.isAuthed) {
     return { name: 'login', query: { redirect: to.fullPath } }
+  }
+  // Staff pages are also protected from signed-in owners and seekers.
+  if (to.meta.requiresStaff && !auth.isStaff) {
+    return { name: 'home' }
   }
   if (to.meta.guestOnly && auth.isAuthed) {
     return safeRedirect(to.query.redirect)

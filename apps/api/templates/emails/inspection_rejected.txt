@@ -1,0 +1,16 @@
+{% autoescape off %}We could not confirm this inspection
+
+Hi {{ name }}, unfortunately we could not confirm your inspection request {{ reference }} for {{ property_title }}.
+
+{% include "emails/_details.txt" %}
+
+This can happen when the preferred date is no longer available or we could not reach you. You are welcome to request another inspection from the listing page.
+
+Browse other homes: {{ site_url }}/properties
+
+If you already paid, reply to this email and our team will help.
+
+--
+{{ brand_name }} - Verified rentals across Nigeria
+{{ site_url }}
+{% endautoescape %}

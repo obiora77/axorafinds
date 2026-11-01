@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from config.notify import notify_team
+from config.emails import send_inspection_received_email, send_inspection_team_email
 from pages.models import SiteSettings
 
 from .models import Inspection, InspectionStatus, PaymentChoice, PaymentStatus
@@ -39,17 +39,8 @@ class InspectionCreateView(CreateAPIView):
         if inspection.payment_choice == PaymentChoice.TRANSFER and inspection.fee_amount > 0:
             data['payment_token'] = signing.dumps({'i': inspection.pk}, salt=TOKEN_SALT)
 
-        notify_team(
-            subject=f'New inspection request {inspection.reference}',
-            body=(
-                f'{inspection.name} ({inspection.phone}, {inspection.email}) asked to inspect '
-                f'"{inspection.property.title}" on {inspection.preferred_date}.\n'
-                f'Fee: NGN {inspection.fee_amount} - {inspection.get_payment_choice_display()} - '
-                f'{inspection.get_payment_status_display()}.\n'
-                'Verify the payment in Django admin, then confirm or reject the inspection.'
-            ),
-            reply_to=inspection.email,
-        )
+        send_inspection_team_email(inspection)
+        send_inspection_received_email(inspection)
         return Response(data, status=status.HTTP_201_CREATED)
 
 

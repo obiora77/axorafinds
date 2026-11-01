@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import { LogOut, Menu, X } from 'lucide-vue-next'
+import { LogOut, Menu, X, LayoutDashboard } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -42,6 +42,10 @@ async function logout(): Promise<void> {
       <nav class="hidden items-center gap-1 md:flex" aria-label="Main">
         <RouterLink v-for="link in links" :key="link.to" :to="link.to" class="nav-link">{{ link.label }}</RouterLink>
         <template v-if="auth.isAuthed">
+          <RouterLink v-if="auth.isStaff" to="/admin" class="nav-link gap-2">
+            <LayoutDashboard class="size-4" aria-hidden="true" />
+            Dashboard
+          </RouterLink>
           <RouterLink v-if="auth.isOwner" to="/list-property" class="nav-link">List a property</RouterLink>
           <button type="button" class="nav-link gap-2" @click="logout">
             <LogOut class="size-4" aria-hidden="true" />
@@ -73,6 +77,12 @@ async function logout(): Promise<void> {
           <RouterLink :to="link.to" class="nav-link w-full">{{ link.label }}</RouterLink>
         </li>
         <template v-if="auth.isAuthed">
+          <li v-if="auth.isStaff">
+            <RouterLink to="/admin" class="nav-link w-full gap-2">
+              <LayoutDashboard class="size-4" aria-hidden="true" />
+              Dashboard
+            </RouterLink>
+          </li>
           <li v-if="auth.isOwner">
             <RouterLink to="/list-property" class="nav-link w-full">List a property</RouterLink>
           </li>

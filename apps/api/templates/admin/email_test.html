@@ -1,0 +1,54 @@
+{% extends "admin/base_site.html" %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Home</a>
+  &rsaquo; Send a test email
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>Send a test email</h1>
+
+<div class="module aligned">
+  <h2>Current configuration</h2>
+  <table style="width:100%;">
+    <tr><th scope="row" style="text-align:left;width:220px;">Can send</th><td>{{ status.enabled|yesno:"Yes,No - set EMAIL_HOST and SMTP credentials in .env" }}</td></tr>
+    <tr><th scope="row" style="text-align:left;">Backend</th><td><code>{{ status.backend }}</code></td></tr>
+    <tr><th scope="row" style="text-align:left;">SMTP host / port</th><td>{{ status.host|default:"not set" }}{% if status.port %} : {{ status.port }}{% endif %}</td></tr>
+    <tr><th scope="row" style="text-align:left;">Encryption</th><td>{% if status.use_ssl %}SSL{% elif status.use_tls %}STARTTLS{% else %}none{% endif %}</td></tr>
+    <tr><th scope="row" style="text-align:left;">From</th><td>{{ status.from_email }}</td></tr>
+    <tr><th scope="row" style="text-align:left;">Team address</th><td>{{ status.team_email }}</td></tr>
+    <tr><th scope="row" style="text-align:left;">Templates</th><td>{{ status.message_count }} messages: {{ status.templates_ready|yesno:"all HTML and text templates found,some template files are missing" }}{% if status.missing_templates %}<br><strong style="color:#ba2121;">{{ status.missing_templates|join:", " }}</strong>{% endif %}</td></tr>
+    {% if status.last_error %}
+      <tr><th scope="row" style="text-align:left;">Last error</th><td><strong style="color:#ba2121;">{{ status.last_error }}</strong></td></tr>
+    {% endif %}
+  </table>
+</div>
+
+{% if sent is not None %}
+  {% if sent %}
+    <p class="success" style="padding:12px 16px;background:#dfd;border:1px solid #9c9;">The test email was accepted by the mail server. Check the inbox (and the Spam folder) for that address.</p>
+  {% else %}
+    <p class="errornote">The test email could not be sent.{% if error %} <strong>{{ error }}</strong>{% endif %}</p>
+  {% endif %}
+{% endif %}
+
+<form method="post" class="module aligned">
+  {% csrf_token %}
+  <h2>Send a real message</h2>
+  <div class="form-row">
+    {{ form.to.errors }}
+    <div class="flex-container">
+      <label for="{{ form.to.id_for_label }}" class="required">Send to:</label>
+      {{ form.to }}
+    </div>
+    <div class="help">This uses the exact backend and templates the website uses. The result and any SMTP error are shown here.</div>
+  </div>
+  <div class="submit-row">
+    <input type="submit" value="Send test email" class="default">
+  </div>
+</form>
+
+<p><a href="{% url 'admin:index' %}">&larr; Back to the staff dashboard</a></p>
+{% endblock %}

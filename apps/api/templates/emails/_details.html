@@ -1,0 +1,8 @@
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:18px 0;">
+  {% for label, value in details %}
+    <tr>
+      <td style="padding:8px 0;border-bottom:1px solid #e6e8ec;color:#5c6570;font-size:13px;width:38%;vertical-align:top;">{{ label }}</td>
+      <td style="padding:8px 0;border-bottom:1px solid #e6e8ec;font-size:14px;vertical-align:top;">{{ value|linebreaksbr }}</td>
+    </tr>
+  {% endfor %}
+</table>

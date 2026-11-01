@@ -508,5 +508,83 @@
       "transfer_note": "Use your payment reference as the transfer narration.",
       "is_live": false
     }
+  },
+  {
+    "model": "pages.review",
+    "pk": 1,
+    "fields": {
+      "user": null,
+      "name": "Chiamaka Okafor",
+      "location": "Onitsha, Anambra State",
+      "rating": 5,
+      "text": "I found a two-bedroom flat at Fegge in under a week. The inspection was confirmed the next day and there were no agent fees at the end. The whole process felt honest.",
+      "is_published": true,
+      "created_at": "2026-10-15T10:20:00Z"
+    }
+  },
+  {
+    "model": "pages.review",
+    "pk": 2,
+    "fields": {
+      "user": null,
+      "name": "Ibrahim Musa",
+      "location": "Abuja, FCT",
+      "rating": 5,
+      "text": "The team reviewed the listing before it went live, so what I saw online is exactly what I met. That alone saved me from two wasted trips across town.",
+      "is_published": true,
+      "created_at": "2026-10-10T08:45:00Z"
+    }
+  },
+  {
+    "model": "pages.review",
+    "pk": 3,
+    "fields": {
+      "user": null,
+      "name": "Tolu Adeyemi",
+      "location": "Lekki, Lagos State",
+      "rating": 4,
+      "text": "Booking the inspection was simple and the payment reference made the transfer easy. I only wish there were more listings around Lekki.",
+      "is_published": true,
+      "created_at": "2026-10-04T15:10:00Z"
+    }
+  },
+  {
+    "model": "pages.review",
+    "pk": 4,
+    "fields": {
+      "user": null,
+      "name": "Ngozi Eze",
+      "location": "Enugu, Enugu State",
+      "rating": 5,
+      "text": "As a first-time renter I had a lot of questions. The team answered every one and never pushed me to pay before I had seen the place.",
+      "is_published": true,
+      "created_at": "2026-09-28T12:00:00Z"
+    }
+  },
+  {
+    "model": "pages.review",
+    "pk": 5,
+    "fields": {
+      "user": null,
+      "name": "Emeka Nwosu",
+      "location": "Port Harcourt, Rivers State",
+      "rating": 5,
+      "text": "I listed my property and it was published after review. I got serious inspection requests within days instead of endless calls from agents.",
+      "is_published": true,
+      "created_at": "2026-09-20T09:30:00Z"
+    }
+  },
+  {
+    "model": "pages.review",
+    "pk": 6,
+    "fields": {
+      "user": null,
+      "name": "Blessing Udo",
+      "location": "Owerri, Imo State",
+      "rating": 4,
+      "text": "Clear prices, clear inspection fees and no pressure. I have already recommended Axora to two friends looking for a place in Owerri.",
+      "is_published": true,
+      "created_at": "2026-09-12T17:40:00Z"
+    }
   }
 ]

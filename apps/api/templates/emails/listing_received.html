@@ -1,0 +1,13 @@
+{% extends "emails/base.html" %}
+{% block title %}We received your listing{% endblock %}
+{% block content %}
+  <h1 style="margin:0 0 12px;font-size:24px;line-height:1.3;color:#1a1a1a;">We received your listing</h1>
+  <p style="margin:0 0 14px;">
+    Thank you for submitting <strong>{{ title }}</strong>. Our team will check the details and photos before it goes live.
+  </p>
+  {% include "emails/_details.html" %}
+  <p style="margin:0 0 14px;">
+    Your listing is pending review. We will email you as soon as it is published, or if we need anything changed.
+  </p>
+  <p style="margin:0;color:#5c6570;font-size:13px;">You can reply to this email if you need to update anything.</p>
+{% endblock %}

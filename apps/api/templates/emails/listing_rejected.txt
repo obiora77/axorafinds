@@ -1,0 +1,14 @@
+{% autoescape off %}Your listing was not approved
+
+Our team could not approve {{ title }} this time.
+
+{% include "emails/_details.txt" %}
+
+Common reasons are unclear photos, missing details, or a price that does not match the property. Reply to this email if you would like to make changes and resubmit.
+
+Submit another listing: {{ site_url }}/list-property
+
+--
+{{ brand_name }} - Verified rentals across Nigeria
+{{ site_url }}
+{% endautoescape %}

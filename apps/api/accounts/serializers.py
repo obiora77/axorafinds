@@ -14,7 +14,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'name', 'phone', 'role']
+        fields = ['id', 'email', 'name', 'phone', 'role', 'is_staff']
         read_only_fields = fields
 
     def get_name(self, user) -> str:
@@ -53,6 +53,7 @@ class RegisterSerializer(serializers.Serializer):
             last_name=last.strip(),
             phone=validated_data.get('phone', ''),
             role=validated_data['role'],
+            is_active=False,
         )
 
 

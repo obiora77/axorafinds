@@ -1,0 +1,21 @@
+{% autoescape off %}Hi {{ name }},
+
+We received your inspection request for {{ property_title }} in {{ property_location }}. Your reference is {{ reference }}.
+
+{% include "emails/_details.txt" %}
+
+{% if has_fee and is_transfer %}To view the official bank account details, return to the listing page. For your security, we do not include bank details in email.
+{% elif has_fee %}Please have the inspection fee ready when you meet the agent.
+{% else %}There is no inspection fee for this property.
+{% endif %}
+
+Your request is pending. Our team will contact you on {{ phone }} to confirm the date and time.
+
+View the listing: {{ property_url }}
+
+Keep your reference for any questions: {{ reference }}.
+
+--
+{{ brand_name }} - Verified rentals across Nigeria
+{{ site_url }}
+{% endautoescape %}

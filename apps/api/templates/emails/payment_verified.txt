@@ -1,0 +1,14 @@
+{% autoescape off %}Payment verified
+
+Hi {{ name }}, we verified your payment for inspection {{ reference }}.
+
+{% include "emails/_details.txt" %}
+
+Your inspection is still pending confirmation. Our team will contact you on {{ phone }} to agree the date and time.
+
+View the listing: {{ property_url }}
+
+--
+{{ brand_name }} - Verified rentals across Nigeria
+{{ site_url }}
+{% endautoescape %}

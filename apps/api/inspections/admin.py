@@ -1,7 +1,20 @@
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 
-from .models import Inspection
+from config.emails import (
+    last_email_error,
+    send_inspection_confirmed_email,
+    send_inspection_rejected_email,
+    send_payment_verified_email,
+)
+
+from .models import Inspection, InspectionStatus, PaymentStatus
+
+EMAIL_BY_METHOD = {
+    'verify_payment': send_payment_verified_email,
+    'confirm': send_inspection_confirmed_email,
+    'reject': send_inspection_rejected_email,
+}
 
 
 @admin.register(Inspection)
@@ -19,7 +32,7 @@ class InspectionAdmin(admin.ModelAdmin):
     search_fields = ('reference', 'name', 'email', 'phone', 'property__title')
     date_hierarchy = 'created_at'
     ordering = ('-created_at',)
-    actions = ['mark_payment_verified', 'confirm_inspections', 'reject_inspections']
+    actions = ['mark_payment_verified', 'confirm_inspections', 'reject_inspections', 'resend_emails']
     readonly_fields = (
         'reference', 'property', 'user', 'name', 'phone', 'email', 'preferred_date', 'note',
         'payment_choice', 'fee_amount', 'payment_status', 'status',
@@ -42,6 +55,7 @@ class InspectionAdmin(admin.ModelAdmin):
         for inspection in queryset:
             try:
                 getattr(inspection, method)(request.user)
+                EMAIL_BY_METHOD[method](inspection)
                 done += 1
             except ValidationError as exc:
                 self.message_user(request, f'{inspection.reference}: {"; ".join(exc.messages)}', messages.WARNING)
@@ -59,3 +73,32 @@ class InspectionAdmin(admin.ModelAdmin):
     @admin.action(description='Reject inspection')
     def reject_inspections(self, request, queryset):
         self._run(request, queryset, 'reject', 'rejected')
+
+    @admin.action(description='Resend the latest decision email')
+    def resend_emails(self, request, queryset):
+        # The record is untouched; this only retries delivery after a mail outage.
+        sent = 0
+        for inspection in queryset:
+            if inspection.status == InspectionStatus.CONFIRMED:
+                sender = send_inspection_confirmed_email
+            elif inspection.status == InspectionStatus.REJECTED:
+                sender = send_inspection_rejected_email
+            elif inspection.payment_status == PaymentStatus.VERIFIED and inspection.fee_amount > 0:
+                sender = send_payment_verified_email
+            else:
+                self.message_user(
+                    request,
+                    f'{inspection.reference}: no decision email to resend yet.',
+                    messages.WARNING,
+                )
+                continue
+            if sender(inspection):
+                sent += 1
+            else:
+                self.message_user(
+                    request,
+                    f'{inspection.reference}: {last_email_error() or "The email was not sent."}',
+                    messages.ERROR,
+                )
+        if sent:
+            self.message_user(request, f'{sent} email(s) sent again.', messages.SUCCESS)

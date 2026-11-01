@@ -30,7 +30,8 @@ const onSubmit = handleSubmit(async (values) => {
   submitError.value = ''
   try {
     await auth.login(values.email, values.password)
-    await router.push(safeRedirect(route.query.redirect))
+    // Staff land on their dashboard after a normal login; everyone else on the site.
+    await router.push(safeRedirect(route.query.redirect, auth.isStaff ? '/admin' : '/'))
   } catch (e) {
     const parsed = parseApiError(e)
     submitError.value = parsed.message.toLowerCase().includes('no active account')
@@ -63,6 +64,7 @@ const onSubmit = handleSubmit(async (values) => {
         <button type="submit" class="btn btn-primary w-full" :disabled="isSubmitting">
           {{ isSubmitting ? 'Signing in...' : 'Login' }}
         </button>
+        <RouterLink :to="{ name: 'reset-password', query: route.query }" class="items-center font-semibold text-brand hover:underline">reset password</RouterLink>
       </form>
 
       <p class="mt-6 text-center text-muted">
