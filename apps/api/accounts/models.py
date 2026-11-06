@@ -77,6 +77,18 @@ class User(AbstractUser):
     def __str__(self):
         return self.email
 
+    @property
+    def is_pending_signup(self) -> bool:
+        """Signed up on the website but never entered the emailed code, so not active yet.
+
+        Accounts deactivated by staff, or created in Django admin, are never "pending": they
+        have no signup code on record, or one that was already used.
+        """
+        if self.is_active or self.is_staff or not self.pk:
+            return False
+        signup = self.otp_challenges.filter(purpose=OtpChallenge.SIGNUP)
+        return signup.exists() and not signup.filter(consumed_at__isnull=False).exists()
+
 
 class OtpChallenge(models.Model):
     SIGNUP = 'signup'

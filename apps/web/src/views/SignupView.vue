@@ -48,7 +48,13 @@ const onSubmit = handleSubmit(async (values) => {
       role: values.role,
       ...(values.phone ? { phone: values.phone } : {}),
     })
-    await router.push({ name: 'otp', query: { email: result.email, purpose: 'signup', redirect: route.query.redirect, role: values.role } })
+    // The account is created but inactive: send them to enter the code we just emailed.
+    // Only a path on this site is carried along as the place to go after verifying.
+    const redirect = safeRedirect(route.query.redirect, '')
+    await router.push({
+      name: 'otp',
+      query: { email: result.email, purpose: 'signup', role: values.role, ...(redirect ? { redirect } : {}) },
+    })
   } catch (e) {
     const parsed = parseApiError(e)
     submitError.value = parsed.message

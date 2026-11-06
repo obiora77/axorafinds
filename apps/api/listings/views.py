@@ -1,5 +1,7 @@
 from django.db.models import Prefetch
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.views.decorators.http import require_GET
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
@@ -14,7 +16,7 @@ from accounts.permissions import IsOwnerRole, IsSeekerRole
 from config.emails import send_listing_received_email, send_listing_team_email
 
 from .filters import PropertyFilter
-from .models import Favorite, Property, PropertyPhoto, Status
+from .models import Favorite, PhotoBlob, Property, PropertyPhoto, Status
 from .serializers import PropertyCardSerializer, PropertyCreateSerializer, PropertyDetailSerializer
 
 
@@ -29,6 +31,20 @@ def published_properties():
     return Property.objects.filter(status=Status.PUBLISHED).prefetch_related(
         Prefetch('photos', queryset=PropertyPhoto.objects.order_by('position', 'id'))
     )
+
+
+@require_GET
+def photo_file(request, pk):
+    """GET /api/photos/:id - a stored listing picture.
+
+    A plain Django view (not DRF) so a browser's ``Accept: image/...`` header can never get a 406.
+    The id is the only thing in the address; pictures are as public as the listing page they appear on.
+    """
+    blob = get_object_or_404(PhotoBlob.objects.select_related('photo'), pk=pk)
+    response = HttpResponse(bytes(blob.data), content_type=blob.photo.stored_type or 'image/webp')
+    response['Cache-Control'] = 'public, max-age=86400'
+    response['Cross-Origin-Resource-Policy'] = 'cross-origin'  # the website lives on another domain
+    return response
 
 
 class PropertyViewSet(

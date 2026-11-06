@@ -1,3 +1,4 @@
+import logging
 import uuid
 from decimal import Decimal
 from pathlib import Path
@@ -5,9 +6,13 @@ from pathlib import Path
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 from django.utils.text import slugify
+
+from .images import compress_image
+
+logger = logging.getLogger(__name__)
 
 # Keep in sync with NG_STATES in apps/web/src/lib/site.ts.
 STATES = [
@@ -119,12 +124,21 @@ class Property(models.Model):
 
 
 class PropertyPhoto(models.Model):
-    """A listing photo: an uploaded file, or an external image URL (used by the seed data)."""
+    """
+    A listing photo.
+
+    New uploads (from the website or from Django admin) are resized and stored in the database
+    (see PhotoBlob) and served from /api/photos/<id>. That is deliberate: hosts like Render wipe the
+    server's disk on every deploy, so photos saved as files would disappear. Older rows that still
+    point at a file, and the seed data's external image URLs, keep working.
+    """
 
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='photos')
     image = models.ImageField(upload_to=photo_path, blank=True)
     external_url = models.URLField(max_length=500, blank=True)
     position = models.PositiveSmallIntegerField(default=0)
+    # Content type of the picture stored in PhotoBlob; empty when the photo lives elsewhere.
+    stored_type = models.CharField(max_length=40, blank=True, editable=False)
 
     class Meta:
         ordering = ['position', 'id']
@@ -133,8 +147,38 @@ class PropertyPhoto(models.Model):
         return f'Photo {self.position + 1} of {self.property_id}'
 
     def clean(self):
-        if not self.image and not self.external_url:
+        if not self.image and not self.external_url and not self.stored_type:
             raise ValidationError('Upload an image or give an image URL.')
+
+    def _read_upload(self):
+        """Resizes a freshly uploaded file; returns (bytes, content_type) or None if unreadable."""
+        try:
+            file = self.image.file
+            file.seek(0)
+            return compress_image(file.read())
+        except Exception:  # noqa: BLE001 - fall back to saving the file as uploaded
+            logger.warning('Could not process the uploaded photo; keeping the original file.', exc_info=True)
+            return None
+
+    def save(self, *args, **kwargs):
+        upload = self._read_upload() if self.image and not self.image._committed else None
+        if upload:
+            self.image = ''
+            self.stored_type = upload[1]
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            if upload:
+                PhotoBlob.objects.update_or_create(photo=self, defaults={'data': upload[0]})
+
+
+class PhotoBlob(models.Model):
+    """The picture bytes for a PropertyPhoto, kept apart so listing queries never load them."""
+
+    photo = models.OneToOneField(PropertyPhoto, on_delete=models.CASCADE, primary_key=True, related_name='blob')
+    data = models.BinaryField()
+
+    def __str__(self):
+        return f'Picture data for photo {self.photo_id}'
 
 
 class Favorite(models.Model):

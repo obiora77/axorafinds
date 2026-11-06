@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.urls import reverse
 from rest_framework import serializers
 
 from .models import Property, PropertyPhoto, Status
@@ -9,10 +10,14 @@ ALLOWED_IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
 
 
 def photo_url(photo: PropertyPhoto, request) -> str:
-    if photo.image:
-        url = photo.image.url
-        return request.build_absolute_uri(url) if request else url
-    return photo.external_url
+    """The address the browser loads the picture from."""
+    if photo.stored_type:  # saved in the database: served by /api/photos/<id>
+        path = reverse('photo-file', args=[photo.pk])
+    elif photo.image:  # an older photo saved as a file
+        path = photo.image.url
+    else:
+        return photo.external_url
+    return request.build_absolute_uri(path) if request else path
 
 
 class PhotoSerializer(serializers.ModelSerializer):

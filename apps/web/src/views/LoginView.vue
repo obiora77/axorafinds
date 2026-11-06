@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { FetchError } from 'ofetch'
 import { useRoute, useRouter } from 'vue-router'
 import { useForm } from 'vee-validate'
 import { z } from 'zod'
@@ -33,6 +34,21 @@ const onSubmit = handleSubmit(async (values) => {
     // Staff land on their dashboard after a normal login; everyone else on the site.
     await router.push(safeRedirect(route.query.redirect, auth.isStaff ? '/admin' : '/'))
   } catch (e) {
+    // Right password, but the emailed code was never entered: send a fresh one and go to the code page.
+    if (e instanceof FetchError && (e.data as { code?: string } | undefined)?.code === 'email_not_verified') {
+      const address = values.email.trim().toLowerCase()
+      try {
+        await auth.resendOtp(address, 'signup')
+      } catch {
+        /* the code page has its own Resend button */
+      }
+      const redirect = safeRedirect(route.query.redirect, '')
+      await router.push({
+        name: 'otp',
+        query: { email: address, purpose: 'signup', from: 'login', ...(redirect ? { redirect } : {}) },
+      })
+      return
+    }
     const parsed = parseApiError(e)
     submitError.value = parsed.message.toLowerCase().includes('no active account')
       ? 'Email or password is incorrect.'

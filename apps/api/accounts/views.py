@@ -1,7 +1,10 @@
 import hashlib
+import hmac
+import logging
 import secrets
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -18,18 +21,22 @@ from config.emails import send_otp_email, send_welcome_email
 from .models import OtpChallenge
 from .serializers import AxoraTokenSerializer, RegisterSerializer, UserSerializer
 
+logger = logging.getLogger(__name__)
 User = get_user_model()
 OTP_MINUTES = 10
 MAX_OTP_ATTEMPTS = 5
 
 
 def _hash_code(code):
-    return hashlib.sha256(code.encode('utf-8')).hexdigest()
+    # Keyed with SECRET_KEY, so a leaked database does not reveal codes by brute force.
+    return hmac.new(settings.SECRET_KEY.encode('utf-8'), code.encode('utf-8'), hashlib.sha256).hexdigest()
 
 
 def _issue_otp(user, purpose):
     code = f'{secrets.randbelow(1_000_000):06d}'
-    OtpChallenge.objects.filter(user=user, purpose=purpose, consumed_at__isnull=True).update(consumed_at=timezone.now())
+    # A new code replaces any earlier one. Expire the old ones (do not mark them used: "used"
+    # means the person really verified, which is how a pending signup is told apart).
+    OtpChallenge.objects.filter(user=user, purpose=purpose, consumed_at__isnull=True).update(expires_at=timezone.now())
     challenge = OtpChallenge.objects.create(
         user=user, purpose=purpose, code_hash=_hash_code(code),
         expires_at=timezone.now() + timedelta(minutes=OTP_MINUTES),
@@ -40,7 +47,8 @@ def _issue_otp(user, purpose):
         raise RuntimeError('We could not send the verification email. Please try again shortly.')
 
 
-def _consume_otp(email, code, purpose):
+def _check_otp(email, code, purpose, *, consume=True):
+    """Checks a code. Every check counts as an attempt; a correct one is used up only if ``consume``."""
     user = User.objects.filter(email__iexact=email.strip()).first()
     if not user:
         return None, None
@@ -52,10 +60,15 @@ def _consume_otp(email, code, purpose):
     challenge.attempts += 1
     challenge.save(update_fields=['attempts'])
     if secrets.compare_digest(challenge.code_hash, _hash_code(code.strip())):
-        challenge.consumed_at = timezone.now()
-        challenge.save(update_fields=['consumed_at'])
+        if consume:
+            challenge.consumed_at = timezone.now()
+            challenge.save(update_fields=['consumed_at'])
         return user, challenge
     return user, None
+
+
+def _consume_otp(email, code, purpose):
+    return _check_otp(email, code, purpose, consume=True)
 
 
 class AuthThrottleMixin:
@@ -72,7 +85,8 @@ class RegisterView(AuthThrottleMixin, APIView):
         try:
             _issue_otp(user, OtpChallenge.SIGNUP)
         except RuntimeError as exc:
-            user.delete()
+            if not serializer.pending_user:
+                user.delete()  # nothing was sent, so do not leave a half-made account behind
             return Response({'detail': str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         return Response(
             {'detail': 'We sent a 6-digit verification code to your email.', 'email': user.email, 'purpose': 'signup'},
@@ -87,15 +101,26 @@ class VerifyOtpView(AuthThrottleMixin, APIView):
         purpose = str(request.data.get('purpose', OtpChallenge.SIGNUP)).strip()
         if purpose not in (OtpChallenge.SIGNUP, OtpChallenge.PASSWORD_RESET) or not email or len(code) != 6 or not code.isdigit():
             return Response({'detail': 'Enter your email and the 6-digit code.'}, status=status.HTTP_400_BAD_REQUEST)
-        user, challenge = _consume_otp(email, code, purpose)
-        if not challenge:
-            return Response({'detail': 'That code is invalid or expired. Request a new code and try again.'}, status=status.HTTP_400_BAD_REQUEST)
+        invalid = Response({'detail': 'That code is invalid or expired. Request a new code and try again.'}, status=status.HTTP_400_BAD_REQUEST)
         if purpose == OtpChallenge.SIGNUP:
-            if user.is_active:
-                return Response({'detail': 'This account is already verified.'}, status=status.HTTP_400_BAD_REQUEST)
+            candidate = User.objects.filter(email__iexact=email).first()
+            if candidate and candidate.is_active:
+                return Response({'detail': 'This account is already verified. You can log in.'}, status=status.HTTP_400_BAD_REQUEST)
+            # Only a signup that is still waiting for its code can be activated this way. A
+            # deactivated account can never switch itself back on with an emailed code.
+            if not candidate or not candidate.is_pending_signup:
+                return invalid
+        # A password-reset code is only checked here; it is used up when the new password is set.
+        user, challenge = _check_otp(email, code, purpose, consume=purpose == OtpChallenge.SIGNUP)
+        if not challenge:
+            return invalid
+        if purpose == OtpChallenge.SIGNUP:
             user.is_active = True
             user.save(update_fields=['is_active'])
-            send_welcome_email(user)
+            try:
+                send_welcome_email(user)
+            except Exception:  # noqa: BLE001 - a welcome email must never undo a successful verification
+                logger.exception('Could not send the welcome email to %s', user.email)
             refresh = RefreshToken.for_user(user)
             return Response({'detail': 'Email verified successfully.', 'access': str(refresh.access_token), 'refresh': str(refresh), 'user': UserSerializer(user).data})
         return Response({'detail': 'Code verified. You can now set a new password.'})
@@ -109,7 +134,7 @@ class ResendOtpView(AuthThrottleMixin, APIView):
             return Response({'detail': 'Invalid code purpose.'}, status=status.HTTP_400_BAD_REQUEST)
         user = User.objects.filter(email__iexact=email).first()
         # Keep responses generic to avoid exposing account existence.
-        if user and ((purpose == OtpChallenge.SIGNUP and not user.is_active) or (purpose == OtpChallenge.PASSWORD_RESET and user.is_active)):
+        if user and ((purpose == OtpChallenge.SIGNUP and user.is_pending_signup) or (purpose == OtpChallenge.PASSWORD_RESET and user.is_active)):
             try:
                 _issue_otp(user, purpose)
             except RuntimeError:
@@ -136,7 +161,8 @@ class PasswordResetConfirmView(AuthThrottleMixin, APIView):
         password = request.data.get('password', '')
         if not email or len(code) != 6 or not code.isdigit() or not isinstance(password, str):
             return Response({'detail': 'Enter your email, 6-digit code, and new password.'}, status=status.HTTP_400_BAD_REQUEST)
-        user, challenge = _consume_otp(email, code, OtpChallenge.PASSWORD_RESET)
+        # Check the code first but keep it alive: a too-weak password must not cost the person their code.
+        user, challenge = _check_otp(email, code, OtpChallenge.PASSWORD_RESET, consume=False)
         if not user or not challenge or not user.is_active:
             return Response({'detail': 'That code is invalid or expired. Request a new code and try again.'}, status=status.HTTP_400_BAD_REQUEST)
         try:

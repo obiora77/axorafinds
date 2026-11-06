@@ -2,7 +2,12 @@
 Contract tests for the rules in the Axora Finds brief. Run with: python manage.py test
 """
 import io
+import json
+import os
+import re
 import tempfile
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import time
 from datetime import timedelta
 from unittest import mock
@@ -19,7 +24,8 @@ from PIL import Image
 from rest_framework.test import APIClient, APITestCase
 
 from accounts.models import Role, User
-from config.emails import email_enabled, send_test_email
+from config.emails import email_enabled, email_status, last_email_error, send_otp_email, send_test_email
+from listings.models import PropertyPhoto
 from inspections.models import Inspection, InspectionStatus, PaymentStatus
 from inspections.views import TOKEN_SALT
 from listings.models import Property, Status
@@ -54,7 +60,17 @@ class BaseCase(APITestCase):
         cache.clear()  # throttle counters
         mail.outbox.clear()  # emails are not reset between test methods
 
+    def last_code(self, email):
+        """The 6-digit code from the newest email sent to this address."""
+        for message in reversed(mail.outbox):
+            if email.lower() in [a.lower() for a in message.to]:
+                found = re.search(r'\b(\d{6})\b', message.body)
+                if found:
+                    return found.group(1)
+        self.fail(f'No verification code was emailed to {email}')
+
     def register(self, email, role='seeker'):
+        """Sign up the way a visitor does: register, then enter the emailed code."""
         client = APIClient()
         response = client.post(
             '/api/auth/register',
@@ -62,8 +78,21 @@ class BaseCase(APITestCase):
             format='json',
         )
         self.assertEqual(response.status_code, 201, response.content)
-        client.credentials(HTTP_AUTHORIZATION=f"Bearer {response.data['access']}")
-        return client, response.data
+        self.assertNotIn('access', response.data)  # nobody is signed in before the code is entered
+        verified = client.post(
+            '/api/auth/verify-otp',
+            {'email': email, 'code': self.last_code(email), 'purpose': 'signup'},
+            format='json',
+        )
+        self.assertEqual(verified.status_code, 200, verified.content)
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {verified.data['access']}")
+        return client, verified.data
+
+    def html(self, message):
+        self.assertTrue(message.alternatives)
+        html, mimetype = message.alternatives[0]
+        self.assertEqual(mimetype, 'text/html')
+        return html
 
     def staff(self):
         return User.objects.create_user('staff@axora.test', PASSWORD, role=Role.STAFF)
@@ -560,12 +589,6 @@ class AdminQueueTests(BaseCase):
 class EmailTests(BaseCase):
     """Every transactional flow renders both a text and an HTML part."""
 
-    def html(self, message):
-        self.assertTrue(message.alternatives)
-        html, mimetype = message.alternatives[0]
-        self.assertEqual(mimetype, 'text/html')
-        return html
-
     def test_every_message_has_both_html_and_text_templates(self):
         from django.template.loader import get_template
 
@@ -589,8 +612,10 @@ class EmailTests(BaseCase):
     def test_registration_sends_the_welcome_email(self):
         self.register('welcome@example.com')
 
-        self.assertEqual(len(mail.outbox), 1)
-        message = mail.outbox[0]
+        # The code email goes first; the welcome email follows once the code is verified.
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertIn('code', mail.outbox[0].subject)
+        message = mail.outbox[1]
         self.assertEqual(message.to, ['welcome@example.com'])
         self.assertEqual(message.subject, 'Welcome to Axora Finds')
         self.assertEqual(message.from_email, 'Axora Finds <no-reply@axora.test>')
@@ -603,7 +628,7 @@ class EmailTests(BaseCase):
     def test_html_email_embeds_the_logo_inline(self):
         self.register('logo@example.com')
 
-        message = mail.outbox[0]
+        message = mail.outbox[-1]  # the welcome email
         html = self.html(message)
         self.assertIn('cid:axora-finds-logo', html)
 
@@ -1075,3 +1100,402 @@ class StaffApiTests(BaseCase):
         users = self.client.get('/api/staff/users', {'role': 'staff'})
         self.assertEqual(users.status_code, 200)
         self.assertEqual(users.data['count'], 1)
+
+
+class SignupOtpTests(BaseCase):
+    """Sign up -> emailed code -> signed in, including the ways it used to get stuck."""
+
+    def start_signup(self, email='new@example.com', role='seeker', password=PASSWORD):
+        return self.client.post(
+            '/api/auth/register',
+            {'name': 'Ada Obi', 'email': email, 'password': password, 'role': role},
+            format='json',
+        )
+
+    def verify(self, email, code, purpose='signup'):
+        return self.client.post(
+            '/api/auth/verify-otp', {'email': email, 'code': code, 'purpose': purpose}, format='json'
+        )
+
+    def test_register_asks_for_the_code_and_does_not_sign_in(self):
+        response = self.start_signup()
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data['email'], 'new@example.com')
+        self.assertEqual(response.data['purpose'], 'signup')
+        self.assertNotIn('access', response.data)
+        self.assertFalse(User.objects.get(email='new@example.com').is_active)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_correct_code_activates_signs_in_and_sends_welcome(self):
+        self.start_signup()
+        wrong = '000000' if self.last_code('new@example.com') != '000000' else '111111'
+        self.assertEqual(self.verify('new@example.com', wrong).status_code, 400)
+
+        response = self.verify('new@example.com', self.last_code('new@example.com'))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('access', response.data)
+        self.assertEqual(response.data['user']['role'], 'seeker')
+        self.assertTrue(User.objects.get(email='new@example.com').is_active)
+        self.assertEqual(mail.outbox[-1].subject, 'Welcome to Axora Finds')
+        # the code works once
+        self.assertEqual(self.verify('new@example.com', self.last_code('new@example.com')).status_code, 400)
+
+    def test_a_failing_welcome_email_does_not_break_verification(self):
+        self.start_signup()
+        with mock.patch('accounts.views.send_welcome_email', side_effect=TypeError('boom')):
+            response = self.verify('new@example.com', self.last_code('new@example.com'))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('access', response.data)
+
+    def test_login_before_verifying_points_to_the_code_page(self):
+        self.start_signup()
+        response = self.client.post('/api/auth/token', {'email': 'NEW@example.com', 'password': PASSWORD}, format='json')
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.data['code'], 'email_not_verified')
+        self.assertEqual(response.data['email'], 'new@example.com')
+        # a wrong password still looks like any other failed login
+        wrong = self.client.post('/api/auth/token', {'email': 'new@example.com', 'password': 'nope-nope-1'}, format='json')
+        self.assertEqual(wrong.status_code, 401)
+
+    def test_unverified_signup_can_start_again_with_the_same_email(self):
+        self.start_signup(role='seeker', password=PASSWORD)
+        first_code = self.last_code('new@example.com')
+        again = self.start_signup(role='owner', password='An0ther-str0ng-one')
+        self.assertEqual(again.status_code, 201)
+        self.assertEqual(User.objects.filter(email='new@example.com').count(), 1)
+        self.assertEqual(self.verify('new@example.com', first_code).status_code, 400)  # replaced by the new code
+
+        response = self.verify('new@example.com', self.last_code('new@example.com'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['user']['role'], 'owner')
+        login = self.client.post('/api/auth/token', {'email': 'new@example.com', 'password': 'An0ther-str0ng-one'}, format='json')
+        self.assertEqual(login.status_code, 200)
+
+        # once verified the address is taken for real
+        self.assertEqual(self.start_signup().status_code, 400)
+
+    def test_resend_replaces_the_code(self):
+        self.start_signup()
+        old = self.last_code('new@example.com')
+        sent = self.client.post('/api/auth/resend-otp', {'email': 'new@example.com', 'purpose': 'signup'}, format='json')
+        self.assertEqual(sent.status_code, 200)
+        self.assertEqual(len(mail.outbox), 2)
+        new = self.last_code('new@example.com')
+        if new != old:
+            self.assertEqual(self.verify('new@example.com', old).status_code, 400)
+        self.assertEqual(self.verify('new@example.com', new).status_code, 200)
+
+    def test_codes_stop_working_after_too_many_wrong_guesses(self):
+        self.start_signup()
+        good = self.last_code('new@example.com')
+        bad = '999999' if good != '999999' else '888888'
+        for _ in range(5):
+            self.assertEqual(self.verify('new@example.com', bad).status_code, 400)
+        self.assertEqual(self.verify('new@example.com', good).status_code, 400)
+
+    def test_a_deactivated_account_cannot_switch_itself_back_on(self):
+        client, _ = self.register('banned@example.com')
+        User.objects.filter(email='banned@example.com').update(is_active=False)
+        mail.outbox.clear()
+
+        resend = self.client.post('/api/auth/resend-otp', {'email': 'banned@example.com', 'purpose': 'signup'}, format='json')
+        self.assertEqual(resend.status_code, 200)  # generic answer
+        self.assertEqual(len(mail.outbox), 0)  # but nothing was sent
+        self.assertEqual(self.start_signup('banned@example.com').status_code, 400)
+        self.assertEqual(self.verify('banned@example.com', '123456').status_code, 400)
+        self.assertFalse(User.objects.get(email='banned@example.com').is_active)
+
+    def test_failed_code_email_does_not_leave_a_half_made_account(self):
+        with mock.patch('accounts.views.send_otp_email', return_value=False):
+            response = self.start_signup()
+        self.assertEqual(response.status_code, 503)
+        self.assertFalse(User.objects.filter(email='new@example.com').exists())
+
+    def test_failed_code_email_keeps_an_existing_pending_account(self):
+        self.start_signup()
+        with mock.patch('accounts.views.send_otp_email', return_value=False):
+            response = self.start_signup()
+        self.assertEqual(response.status_code, 503)
+        self.assertTrue(User.objects.filter(email='new@example.com').exists())
+
+    def test_password_reset_keeps_the_code_until_a_valid_password_is_set(self):
+        self.register('reset@example.com')
+        mail.outbox.clear()
+        self.client.post('/api/auth/password-reset/request', {'email': 'reset@example.com'}, format='json')
+        code = self.last_code('reset@example.com')
+
+        # checking the code (as the OTP page does) does not use it up
+        self.assertEqual(self.verify('reset@example.com', code, 'password_reset').status_code, 200)
+        # a weak password is refused but the code survives
+        weak = self.client.post(
+            '/api/auth/password-reset/confirm', {'email': 'reset@example.com', 'code': code, 'password': '12345678'}, format='json'
+        )
+        self.assertEqual(weak.status_code, 400)
+        self.assertIn('password', weak.data)
+        done = self.client.post(
+            '/api/auth/password-reset/confirm', {'email': 'reset@example.com', 'code': code, 'password': 'Brand-new-pass-77'}, format='json'
+        )
+        self.assertEqual(done.status_code, 200, done.content)
+        login = self.client.post('/api/auth/token', {'email': 'reset@example.com', 'password': 'Brand-new-pass-77'}, format='json')
+        self.assertEqual(login.status_code, 200)
+        # and now it really is used up
+        again = self.client.post(
+            '/api/auth/password-reset/confirm', {'email': 'reset@example.com', 'code': code, 'password': 'Yet-another-pass-9'}, format='json'
+        )
+        self.assertEqual(again.status_code, 400)
+
+
+def big_photo(name='big.jpg', size=(3000, 2000)):
+    buffer = io.BytesIO()
+    Image.new('RGB', size, 'navy').save(buffer, 'JPEG')
+    return SimpleUploadedFile(name, buffer.getvalue(), content_type='image/jpeg')
+
+
+class PhotoStorageTests(BaseCase):
+    """Uploaded photos live in the database, so they survive hosts that wipe the disk (Render)."""
+
+    def upload_listing(self, owner, **extra):
+        return owner.post(
+            '/api/properties',
+            {
+                'title': 'Photo test flat', 'property_type': 'flat', 'price': '450000', 'state': 'Anambra',
+                'city': 'Nnewi', 'description': 'A lovely flat with plenty of light and space.',
+                'bedrooms': 2, 'bathrooms': 2, 'inspection_fee': '0',
+                'photos': [big_photo('a.jpg'), big_photo('b.jpg', (800, 600))], **extra,
+            },
+            format='multipart',
+        )
+
+    def test_uploaded_photos_are_stored_in_the_database_and_served_by_url(self):
+        media = tempfile.mkdtemp()
+        with override_settings(MEDIA_ROOT=media):
+            owner, _ = self.register('seller@example.com', 'owner')
+            response = self.upload_listing(owner)
+            self.assertEqual(response.status_code, 201, response.content)
+
+            urls = [p['url'] for p in response.data['photos']]
+            self.assertEqual(len(urls), 2)
+            for url in urls:
+                self.assertRegex(url, r'^http://testserver/api/photos/\d+$')
+
+            first = self.client.get(urls[0].replace('http://testserver', ''))
+            self.assertEqual(first.status_code, 200)
+            self.assertEqual(first['Content-Type'], 'image/webp')
+            self.assertIn('max-age', first['Cache-Control'])
+            picture = Image.open(io.BytesIO(first.content))
+            self.assertEqual(picture.format, 'WEBP')
+            self.assertLessEqual(max(picture.size), 1600)  # a 3000px photo is scaled down
+
+            # nothing was written to the server's disk, so a redeploy cannot lose it
+            self.assertEqual([f for _, _, files in os.walk(media) for f in files], [])
+            for photo in PropertyPhoto.objects.filter(property__title='Photo test flat'):
+                self.assertFalse(photo.image)
+                self.assertEqual(photo.stored_type, 'image/webp')
+
+    def test_owner_sees_their_pending_listing_photos(self):
+        with override_settings(MEDIA_ROOT=tempfile.mkdtemp()):
+            owner, _ = self.register('seller2@example.com', 'owner')
+            self.upload_listing(owner)
+            mine = owner.get('/api/properties/mine')
+            self.assertEqual(mine.status_code, 200)
+            row = mine.data[0] if isinstance(mine.data, list) else mine.data['results'][0]
+            self.assertTrue(row['cover'].endswith(tuple('0123456789')))
+            self.assertEqual(self.client.get(row['cover'].replace('http://testserver', '')).status_code, 200)
+
+    def test_photo_urls_are_https_behind_a_proxy(self):
+        with override_settings(MEDIA_ROOT=tempfile.mkdtemp(), SECURE_PROXY_SSL_HEADER=('HTTP_X_FORWARDED_PROTO', 'https')):
+            owner, _ = self.register('seller3@example.com', 'owner')
+            owner.credentials(HTTP_AUTHORIZATION=owner._credentials['HTTP_AUTHORIZATION'], HTTP_X_FORWARDED_PROTO='https')
+            response = self.upload_listing(owner)
+            self.assertEqual(response.status_code, 201, response.content)
+            self.assertTrue(response.data['photos'][0]['url'].startswith('https://'))
+
+    def test_missing_photo_is_a_404(self):
+        self.assertEqual(self.client.get('/api/photos/999999').status_code, 404)
+        seeded = PropertyPhoto.objects.first()  # seed photos use external URLs, not stored pictures
+        self.assertEqual(self.client.get(f'/api/photos/{seeded.pk}').status_code, 404)
+
+    def test_admin_uploads_are_stored_in_the_database_too(self):
+        owner = User.objects.get(email='seed-owner@axora.test')
+        prop = Property.objects.create(
+            owner=owner, title='Admin photo', property_type='flat', price=1000, state='Lagos', city='Ikeja',
+            description='A listing for the admin upload test.',
+        )
+        with override_settings(MEDIA_ROOT=tempfile.mkdtemp()) as _:
+            photo = PropertyPhoto(property=prop, image=big_photo('admin.jpg'))
+            photo.save()
+        photo.refresh_from_db()
+        self.assertEqual(photo.stored_type, 'image/webp')
+        self.assertFalse(photo.image)
+        self.assertEqual(self.client.get(f'/api/photos/{photo.pk}').status_code, 200)
+        prop.publish(self.staff())  # a stored photo counts as a photo
+        photo.delete()
+        self.assertEqual(self.client.get(f'/api/photos/{photo.pk}').status_code, 404)
+
+    def test_unreadable_upload_falls_back_to_saving_the_file(self):
+        owner = User.objects.get(email='seed-owner@axora.test')
+        prop = Property.objects.create(
+            owner=owner, title='Odd photo', property_type='flat', price=1000, state='Lagos', city='Ikeja',
+            description='A listing for the fallback test.',
+        )
+        with override_settings(MEDIA_ROOT=tempfile.mkdtemp()):
+            photo = PropertyPhoto(property=prop, image=SimpleUploadedFile('x.jpg', b'not really an image', content_type='image/jpeg'))
+            photo.save()
+        self.assertEqual(photo.stored_type, '')
+        self.assertTrue(photo.image)
+
+
+class _MailApi(BaseHTTPRequestHandler):
+    """A tiny stand-in for the Brevo/Resend API that records what it is sent."""
+
+    log: list = []
+    reply = (201, b'{"messageId": "abc"}')
+
+    def do_POST(self):
+        body = self.rfile.read(int(self.headers.get('Content-Length', 0)))
+        type(self).log.append({'path': self.path, 'headers': {k.lower(): v for k, v in self.headers.items()}, 'body': json.loads(body)})
+        status, payload = type(self).reply
+        self.send_response(status)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def log_message(self, *args):
+        pass
+
+
+class HttpEmailBackendTests(BaseCase):
+    """Email over HTTPS (Brevo / Resend) for hosts that block SMTP, such as Render's free tier."""
+
+    def setUp(self):
+        super().setUp()
+        handler = type('Handler', (_MailApi,), {'log': [], 'reply': (201, b'{"messageId": "abc"}')})
+        self.handler = handler
+        self.server = ThreadingHTTPServer(('127.0.0.1', 0), handler)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        self.addCleanup(self.server.server_close)
+        self.addCleanup(self.server.shutdown)
+        self.url = f'http://127.0.0.1:{self.server.server_address[1]}/send'
+        self.user = User.objects.create_user('otp@example.com', PASSWORD, first_name='Ada')
+
+    def configure(self, provider, key='secret-key'):
+        backend = {'brevo': 'BrevoEmailBackend', 'resend': 'ResendEmailBackend'}[provider]
+        self.enterContext(override_settings(
+            EMAIL_BACKEND=f'config.mail_backends.{backend}', EMAIL_PROVIDER=provider, EMAIL_API_KEY=key,
+            EMAIL_API_URL=self.url, EMAIL_HOST='', DEFAULT_FROM_EMAIL='Axora Finds <hello@axora.test>',
+            EMAIL_LOGO_URL='https://api.axora.test/static/img/logo.png', SITE_URL='https://axora.test',
+            TEAM_EMAIL='team@axora.test',
+        ))
+
+    def test_brevo_request_is_built_correctly(self):
+        self.configure('brevo')
+        self.assertTrue(email_enabled())
+        self.assertTrue(send_otp_email(self.user, '482913', title='email verification'))
+
+        sent = self.handler.log[0]
+        self.assertEqual(sent['headers']['api-key'], 'secret-key')
+        self.assertIn('AxoraFinds', sent['headers']['user-agent'])
+        body = sent['body']
+        self.assertEqual(body['sender'], {'email': 'hello@axora.test', 'name': 'Axora Finds'})
+        self.assertEqual(body['to'], [{'email': 'otp@example.com'}])
+        self.assertIn('code', body['subject'])
+        self.assertIn('482913', body['textContent'])
+        self.assertIn('482913', body['htmlContent'])
+        self.assertIn('https://api.axora.test/static/img/logo.png', body['htmlContent'])
+        self.assertNotIn('cid:', body['htmlContent'])  # the inline-logo reference is replaced
+        self.assertIsNone(last_email_error())
+
+    def test_resend_request_is_built_correctly(self):
+        self.configure('resend')
+        self.assertTrue(send_otp_email(self.user, '482913', title='password reset'))
+
+        sent = self.handler.log[0]
+        self.assertEqual(sent['headers']['authorization'], 'Bearer secret-key')
+        body = sent['body']
+        self.assertEqual(body['from'], 'Axora Finds <hello@axora.test>')
+        self.assertEqual(body['to'], ['otp@example.com'])
+        self.assertIn('482913', body['text'])
+        self.assertIn('482913', body['html'])
+        self.assertNotIn('cid:', body['html'])
+
+    def test_replies_go_to_the_visitor_when_a_team_notice_is_sent(self):
+        from config.emails import send_contact_team_email
+
+        self.configure('brevo')
+        message = ContactMessage.objects.create(name='Ife', email='ife@example.com', message='Is it still free?')
+        send_contact_team_email(message)
+        self.assertEqual(self.handler.log[0]['body']['replyTo']['email'], 'ife@example.com')
+
+    def test_a_rejected_key_is_reported_with_a_fix(self):
+        self.configure('brevo')
+        self.handler.reply = (401, b'{"code": "unauthorized", "message": "Key not found"}')
+        self.assertFalse(send_otp_email(self.user, '482913', title='email verification'))
+        error = last_email_error()
+        self.assertIn('HTTP 401', error)
+        self.assertIn('Key not found', error)
+        self.assertIn('BREVO_API_KEY', error)
+
+    def test_an_unverified_sender_is_reported_with_a_fix(self):
+        self.configure('brevo')
+        self.handler.reply = (400, b'{"code": "invalid_parameter", "message": "Sender is not valid"}')
+        self.assertFalse(send_otp_email(self.user, '482913', title='email verification'))
+        self.assertIn('DEFAULT_FROM_EMAIL', last_email_error())
+
+    def test_unreachable_provider_is_reported(self):
+        self.configure('brevo')
+        self.enterContext(override_settings(EMAIL_API_URL='http://127.0.0.1:9/send', EMAIL_API_TIMEOUT=2))
+        self.assertFalse(send_otp_email(self.user, '482913', title='email verification'))
+        self.assertIn('Could not reach Brevo', last_email_error())
+
+    def test_no_key_means_not_enabled(self):
+        self.configure('resend', key='')
+        self.assertFalse(email_enabled())
+        self.assertFalse(send_otp_email(self.user, '482913', title='email verification'))
+        self.assertIn('EMAIL_PROVIDER', last_email_error())
+        self.assertEqual(self.handler.log, [])
+
+    def test_status_describes_the_provider(self):
+        self.configure('brevo')
+        status = email_status()
+        self.assertEqual(status['provider'], 'brevo')
+        self.assertEqual(status['host'], 'api.brevo.com')
+        self.assertEqual(status['port'], 443)
+        self.assertTrue(status['enabled'])
+
+    def test_smtp_timeout_on_render_points_to_the_https_option(self):
+        self.enterContext(override_settings(
+            EMAIL_BACKEND='django.core.mail.backends.smtp.EmailBackend', EMAIL_HOST='smtp.gmail.com',
+            EMAIL_HOST_USER='me@gmail.com', EMAIL_HOST_PASSWORD='x', ON_RENDER=True,
+        ))
+        with mock.patch('django.core.mail.backends.smtp.EmailBackend.send_messages', side_effect=TimeoutError('timed out')):
+            self.assertFalse(send_otp_email(self.user, '482913', title='email verification'))
+        self.assertIn('Render', last_email_error())
+        self.assertIn('BREVO_API_KEY', last_email_error())
+
+    def test_signup_works_end_to_end_over_https_email(self):
+        self.configure('brevo')
+        response = self.client.post(
+            '/api/auth/register',
+            {'name': 'Ada Obi', 'email': 'https-user@example.com', 'password': PASSWORD, 'role': 'seeker'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 201, response.content)
+        code = re.search(r'\b(\d{6})\b', self.handler.log[0]['body']['textContent']).group(1)
+        verified = self.client.post(
+            '/api/auth/verify-otp', {'email': 'https-user@example.com', 'code': code, 'purpose': 'signup'}, format='json'
+        )
+        self.assertEqual(verified.status_code, 200)
+        self.assertEqual(len(self.handler.log), 2)  # the code, then the welcome email
+        self.assertEqual(self.handler.log[1]['body']['subject'], 'Welcome to Axora Finds')
+
+    def test_signup_reports_a_provider_failure_instead_of_pretending(self):
+        self.configure('brevo')
+        self.handler.reply = (401, b'{"message": "Key not found"}')
+        response = self.client.post(
+            '/api/auth/register',
+            {'name': 'Ada Obi', 'email': 'nope@example.com', 'password': PASSWORD, 'role': 'seeker'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 503)
+        self.assertFalse(User.objects.filter(email='nope@example.com').exists())

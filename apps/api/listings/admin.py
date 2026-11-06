@@ -1,15 +1,23 @@
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
+from django.utils.html import format_html
 
 from config.emails import last_email_error, send_listing_published_email, send_listing_rejected_email
 
 from .models import Property, PropertyPhoto, Status
+from .serializers import photo_url
 
 
 class PropertyPhotoInline(admin.TabularInline):
     model = PropertyPhoto
     extra = 0
-    fields = ('image', 'external_url', 'position')
+    fields = ('preview', 'image', 'external_url', 'position')
+    readonly_fields = ('preview',)
+
+    @admin.display(description='Preview')
+    def preview(self, photo):
+        url = photo_url(photo, None) if photo.pk else ''
+        return format_html('<img src="{}" alt="" style="height:64px;border-radius:6px">', url) if url else '-'
 
 
 @admin.register(Property)

@@ -12,6 +12,13 @@ export interface RegisterPayload {
   role: 'seeker' | 'owner'
 }
 
+/** What the API returns after sign-up: no tokens yet, the person must enter the emailed code first. */
+export interface RegisterResult {
+  detail: string
+  email: string
+  purpose: 'signup'
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const ready = ref(false)
@@ -51,13 +58,22 @@ export const useAuthStore = defineStore('auth', () => {
     )
   }
 
-  async function register(payload: RegisterPayload): Promise<void> {
-    startSession(await apiFetch<AuthResponse>('/auth/register', { method: 'POST', body: payload, auth: false }))
+  /**
+   * Creates the account and emails a 6-digit code. This does NOT sign anyone in: the account stays
+   * inactive until the code is verified (see verifyOtp), so there is no session to start here.
+   */
+  async function register(payload: RegisterPayload): Promise<RegisterResult> {
+    return apiFetch<RegisterResult>('/auth/register', { method: 'POST', body: payload, auth: false })
   }
 
   async function verifyOtp(email: string, code: string, purpose: 'signup' | 'password_reset' = 'signup'): Promise<void> {
-    const result = await apiFetch<AuthResponse & { detail: string}>('/auth/verify-otp', { method: 'POST', body: { email, code, purpose }, auth: false })
-    if (purpose === 'signup') startSession(result)  
+    const result = await apiFetch<AuthResponse & { detail: string }>('/auth/verify-otp', {
+      method: 'POST',
+      body: { email, code, purpose },
+      auth: false,
+    })
+    // Only a signup code signs the person in; a password-reset code is checked again when the new password is set.
+    if (purpose === 'signup') startSession(result)
   }
 
   async function resendOtp(email: string, purpose: 'signup' | 'password_reset' = 'signup'): Promise<void> {

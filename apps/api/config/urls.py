@@ -7,7 +7,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from accounts.views import (LoginView, MeView, PasswordResetConfirmView, PasswordResetRequestView, RegisterView, ResendOtpView, VerifyOtpView)
 from inspections.views import InspectionCreateView, PaymentAccountView
-from listings.views import FavoriteDetailView, FavoriteListView, PropertyViewSet
+from listings.views import photo_file, FavoriteDetailView, FavoriteListView, PropertyViewSet
 from pages.views import ContactView, NewsletterView, ReviewListView
 
 admin.site.site_header = 'Axora Finds staff'
@@ -35,6 +35,7 @@ urlpatterns = [
     path('api/reviews', ReviewListView.as_view(), name='reviews'),
     path('api/favorites', FavoriteListView.as_view(), name='favorite-list'),
     path('api/favorites/<int:pk>', FavoriteDetailView.as_view(), name='favorite-detail'),
+    path('api/photos/<int:pk>', photo_file, name='photo-file'),
     path('api/staff/', include('dashboard.urls')),
     path('api/', include(router.urls)),
 ]

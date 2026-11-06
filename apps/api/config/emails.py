@@ -28,9 +28,12 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template import TemplateDoesNotExist, TemplateSyntaxError
 from django.template.loader import get_template, render_to_string
+
 from django.utils import timezone
 from django.utils.formats import date_format
 from django.utils.html import strip_tags
+
+from .mail_backends import EmailApiError
 
 logger = logging.getLogger(__name__)
 
@@ -110,14 +113,17 @@ def email_enabled() -> bool:
     """True when the configured backend can actually deliver a message.
 
     Console, file and in-memory backends work without a mail server (used in development
-    and tests). SMTP and any other backend need ``EMAIL_HOST``; without it we refuse to
-    "send" rather than let a production deployment discard every message silently.
+    and tests). SMTP needs ``EMAIL_HOST``; the Brevo/Resend backends need their API key.
+    Without them we refuse to "send" rather than let a production deployment discard every
+    message silently.
     """
     backend = (settings.EMAIL_BACKEND or '').lower()
     if any(marker in backend for marker in ('console', 'locmem', 'filebased')):
         return True
     if 'dummy' in backend:
         return False
+    if 'mail_backends' in backend:  # Brevo / Resend over HTTPS need an API key, not an SMTP host
+        return bool(getattr(settings, 'EMAIL_API_KEY', ''))
     return bool(settings.EMAIL_HOST)
 
 
@@ -165,8 +171,21 @@ def _render_parts(template: str, context: dict) -> tuple[str, str]:
     return text_body, html_body
 
 
+_RENDER_SMTP_HINT = (
+    'Render\'s free web services block outbound SMTP (ports 25, 465 and 587), so Gmail/SMTP cannot '
+    'send from there. Send over HTTPS instead: set EMAIL_PROVIDER=brevo with BREVO_API_KEY (or '
+    'resend with RESEND_API_KEY), or upgrade the Render instance to a paid plan.'
+)
+
+
 def _smtp_guidance(exc: BaseException) -> str:
-    """A short, actionable hint for the SMTP failures people actually hit."""
+    """A short, actionable hint for the mail failures people actually hit."""
+    if isinstance(exc, EmailApiError):
+        return exc.hint
+    if getattr(settings, 'ON_RENDER', False) and isinstance(
+        exc, (smtplib.SMTPServerDisconnected, socket.timeout, TimeoutError, ConnectionError)
+    ):
+        return _RENDER_SMTP_HINT
     if isinstance(exc, smtplib.SMTPAuthenticationError):
         return (
             'Gmail rejected the login. Turn on 2-Step Verification, create a new '
@@ -228,7 +247,8 @@ def _send(
         return _fail('No recipient address was given.', raise_errors=raise_errors)
     if not email_enabled():
         return _fail(
-            'Email is not configured. Set EMAIL_HOST and the SMTP credentials in .env.',
+            'Email is not configured. Set EMAIL_PROVIDER with BREVO_API_KEY or RESEND_API_KEY '
+            '(works on Render), or EMAIL_HOST with the SMTP credentials.',
             raise_errors=raise_errors,
         )
 
@@ -283,11 +303,14 @@ def email_status() -> dict:
                 # A broken template must not take down the diagnostics screen.
                 missing.append(f'{name}.{extension} ({exc})')
 
+    over_https = 'mail_backends' in (settings.EMAIL_BACKEND or '').lower()
+    api_hosts = {'brevo': 'api.brevo.com', 'resend': 'api.resend.com'}
     return {
         'enabled': email_enabled(),
         'backend': settings.EMAIL_BACKEND,
-        'host': settings.EMAIL_HOST or None,
-        'port': settings.EMAIL_PORT if settings.EMAIL_HOST else None,
+        'provider': (settings.EMAIL_PROVIDER or 'smtp') if (over_https or settings.EMAIL_HOST) else None,
+        'host': api_hosts.get(settings.EMAIL_PROVIDER) if over_https else (settings.EMAIL_HOST or None),
+        'port': 443 if over_https else (settings.EMAIL_PORT if settings.EMAIL_HOST else None),
         'use_tls': settings.EMAIL_USE_TLS,
         'use_ssl': settings.EMAIL_USE_SSL,
         'from_email': _from_email(),
@@ -385,7 +408,6 @@ def send_welcome_email(user) -> bool:
     first_name = user.first_name.strip() or _user_name(user)
     return _send(
         'welcome',
-    'otp',
         'Welcome to Axora Finds',
         user.email,
         {
