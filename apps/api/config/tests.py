@@ -5,6 +5,8 @@ import io
 import json
 import os
 import re
+import subprocess
+import sys
 import tempfile
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -12,13 +14,14 @@ import time
 from datetime import timedelta
 from unittest import mock
 
+from django.conf import settings
 from django.core import mail, signing
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.db import IntegrityError, transaction
-from django.test import override_settings
+from django.test import SimpleTestCase, override_settings
 from django.utils import timezone
 from PIL import Image
 from rest_framework.test import APIClient, APITestCase
@@ -1499,3 +1502,107 @@ class HttpEmailBackendTests(BaseCase):
         )
         self.assertEqual(response.status_code, 503)
         self.assertFalse(User.objects.filter(email='nope@example.com').exists())
+
+
+class EmailSettingsTests(SimpleTestCase):
+    """Which email backend settings.py picks for the .env combinations people actually have."""
+
+    def read(self, name, **env):
+        base = {k: v for k, v in os.environ.items() if not k.startswith(('EMAIL_', 'BREVO_', 'RESEND_', 'DATABASE_'))}
+        base.update(
+            DJANGO_DEBUG='1', EMAIL_HOST='', EMAIL_HOST_USER='', EMAIL_HOST_PASSWORD='', EMAIL_BACKEND='',
+            EMAIL_PROVIDER='', BREVO_API_KEY='', RESEND_API_KEY='',
+        )
+        base.update(env)
+        result = subprocess.run(
+            [sys.executable, '-c', f'import config.settings as s; print(s.{name})'],
+            cwd=settings.BASE_DIR, env=base, capture_output=True, text=True, check=True,
+        )
+        return result.stdout.strip()
+
+    SMTP = 'django.core.mail.backends.smtp.EmailBackend'
+
+    def test_a_provider_beats_a_leftover_smtp_backend_line(self):
+        backend = self.read('EMAIL_BACKEND', EMAIL_BACKEND=self.SMTP, EMAIL_HOST='smtp.gmail.com', BREVO_API_KEY='k')
+        self.assertEqual(backend, 'config.mail_backends.BrevoEmailBackend')
+
+    def test_resend_is_chosen_by_its_key(self):
+        self.assertEqual(self.read('EMAIL_BACKEND', RESEND_API_KEY='k'), 'config.mail_backends.ResendEmailBackend')
+
+    def test_choosing_smtp_explicitly_keeps_smtp_even_with_a_key(self):
+        backend = self.read('EMAIL_BACKEND', EMAIL_PROVIDER='smtp', EMAIL_HOST='smtp.gmail.com', BREVO_API_KEY='k')
+        self.assertEqual(backend, self.SMTP)
+
+    def test_development_backends_are_never_overridden(self):
+        backend = self.read('EMAIL_BACKEND', EMAIL_BACKEND='django.core.mail.backends.console.EmailBackend', BREVO_API_KEY='k')
+        self.assertEqual(backend, 'django.core.mail.backends.console.EmailBackend')
+
+    def test_gmail_smtp_from_a_user_and_password_alone(self):
+        env = {'EMAIL_HOST_USER': 'me@gmail.com', 'EMAIL_HOST_PASSWORD': 'abcd efgh ijkl mnop'}
+        self.assertEqual(self.read('EMAIL_BACKEND', **env), self.SMTP)
+        self.assertEqual(self.read('EMAIL_HOST', **env), 'smtp.gmail.com')
+        self.assertEqual(self.read('EMAIL_HOST_PASSWORD', **env), 'abcdefghijklmnop')  # spaces are not part of it
+
+    def test_nothing_configured(self):
+        self.assertEqual(self.read('EMAIL_BACKEND'), 'django.core.mail.backends.console.EmailBackend')  # dev: print it
+        refuses = self.read('EMAIL_BACKEND', DJANGO_DEBUG='0', DJANGO_SECRET_KEY='x' * 60)
+        self.assertEqual(refuses, 'django.core.mail.backends.dummy.EmailBackend')  # production: refuse, never pretend
+
+
+class DatabaseSettingsTests(SimpleTestCase):
+    """How DATABASE_URL / POSTGRES_* become Django's database settings."""
+
+    def read(self, **env):
+        base = {k: v for k, v in os.environ.items() if not k.startswith(('DATABASE_', 'POSTGRES_', 'DB_'))}
+        base.update(DJANGO_DEBUG='1', DATABASE_URL='', POSTGRES_DB='', POSTGRES_SSLMODE='')
+        base.update(env)
+        result = subprocess.run(
+            [sys.executable, '-c', 'import json, config.settings as s; print(json.dumps(s.DATABASES["default"], default=str))'],
+            cwd=settings.BASE_DIR, env=base, capture_output=True, text=True,
+        )
+        return result
+
+    def config(self, **env):
+        result = self.read(**env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout)
+
+    def test_database_url_with_encoded_password_and_ssl_options(self):
+        db = self.config(
+            DATABASE_URL='postgresql://axora:p%40ss%20w%2Frd%3A1@db.example.com:6543/axora_db'
+            '?sslmode=require&channel_binding=require&unknown_option=1'
+        )
+        self.assertEqual(db['ENGINE'], 'django.db.backends.postgresql')
+        self.assertEqual((db['USER'], db['PASSWORD']), ('axora', 'p@ss w/rd:1'))
+        self.assertEqual((db['HOST'], db['PORT'], db['NAME']), ('db.example.com', '6543', 'axora_db'))
+        self.assertEqual(db['OPTIONS'], {'sslmode': 'require', 'channel_binding': 'require'})  # unknown ones ignored
+        self.assertEqual(db['CONN_MAX_AGE'], 60)
+        self.assertTrue(db['CONN_HEALTH_CHECKS'])
+        self.assertFalse(db['DISABLE_SERVER_SIDE_CURSORS'])
+
+    def test_postgres_scheme_and_defaults(self):
+        db = self.config(DATABASE_URL='postgres://u:p@host/dbname')
+        self.assertEqual((db['HOST'], db['PORT'], db['NAME']), ('host', '5432', 'dbname'))
+        self.assertNotIn('OPTIONS', db)
+
+    def test_postgres_sslmode_variable_wins(self):
+        db = self.config(DATABASE_URL='postgresql://u:p@host/db?sslmode=disable', POSTGRES_SSLMODE='require')
+        self.assertEqual(db['OPTIONS'], {'sslmode': 'require'})
+
+    def test_separate_postgres_variables(self):
+        db = self.config(POSTGRES_DB='axora', POSTGRES_USER='me', POSTGRES_PASSWORD='secret', POSTGRES_HOST='10.0.0.5', POSTGRES_SSLMODE='require')
+        self.assertEqual((db['NAME'], db['USER'], db['PASSWORD'], db['HOST']), ('axora', 'me', 'secret', '10.0.0.5'))
+        self.assertEqual(db['OPTIONS'], {'sslmode': 'require'})
+
+    def test_pooler_and_connection_reuse_can_be_tuned(self):
+        db = self.config(DATABASE_URL='postgresql://u:p@host/db', DB_CONN_MAX_AGE='0', DB_DISABLE_SERVER_SIDE_CURSORS='1')
+        self.assertEqual(db['CONN_MAX_AGE'], 0)
+        self.assertTrue(db['DISABLE_SERVER_SIDE_CURSORS'])
+
+    def test_sqlite_when_nothing_is_set(self):
+        self.assertTrue(self.config()['ENGINE'].endswith('sqlite3'))
+
+    def test_a_non_postgres_url_is_refused_with_a_clear_message(self):
+        result = self.read(DATABASE_URL='mysql://u:p@host/db')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('must start with postgres', result.stderr)
