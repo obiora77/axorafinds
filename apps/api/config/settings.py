@@ -140,8 +140,7 @@ FIXTURE_DIRS = [BASE_DIR / 'fixtures']
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']  # apps/api/static (the email logo lives here)
-# Serve the admin's CSS/JS straight from the installed apps, so the admin is styled on Render even
-# if `collectstatic` was never run. (After collectstatic, WhiteNoise serves the collected copies.)
+
 WHITENOISE_USE_FINDERS = True
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -183,15 +182,8 @@ if RENDER_HOST:
 
 # --- Email ---
 # Every message is rendered from apps/api/templates/emails/. See config/emails.py.
-#
-# Render's FREE web services block outbound SMTP (ports 25, 465, 587), so Gmail/SMTP cannot send
-# there. Pick ONE way to send:
-#   * EMAIL_PROVIDER=brevo  + BREVO_API_KEY   (HTTPS, works on Render free)
-#   * EMAIL_PROVIDER=resend + RESEND_API_KEY  (HTTPS, works on Render free)
-#   * SMTP: EMAIL_HOST / EMAIL_HOST_USER / EMAIL_HOST_PASSWORD (local dev, or a paid Render instance)
-# With nothing set, development prints emails to the terminal and production refuses to send.
+
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '').strip()
-# Gmail shows app passwords as four groups with spaces; the spaces are not part of the password.
 EMAIL_HOST_PASSWORD = ''.join(os.getenv('EMAIL_HOST_PASSWORD', '').split())
 EMAIL_HOST = os.getenv('EMAIL_HOST', '').strip() or ('smtp.gmail.com' if EMAIL_HOST_USER else '')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587') or 587)
@@ -239,7 +231,5 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_SSL_REDIRECT = env_bool('DJANGO_SECURE_SSL_REDIRECT', False)
-    # Behind Render's (or any) HTTPS proxy: without this Django thinks every request is plain HTTP,
-    # which breaks admin login (CSRF) and makes uploaded-photo URLs http:// (blocked on an https site).
     if ON_RENDER or env_bool('DJANGO_BEHIND_PROXY', False):
         SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
