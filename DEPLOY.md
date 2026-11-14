@@ -150,4 +150,4 @@ Use `-o data.json`, not `> data.json`: PowerShell redirection saves UTF-16, whic
 | `no encryption` / `SSL required` | add `?sslmode=require` to `DATABASE_URL` |
 | `could not translate host name` / timed out | wrong host; an Internal Render address used from outside Render; a firewall blocking Render |
 | `too many connections` | use `--workers 1`, `DB_CONN_MAX_AGE=0`, or the provider's pooled address with `DB_DISABLE_SERVER_SIDE_CURSORS=1` |
-| `relation "..." does not exist` | migrations did not run: the Build Command must include `python manage.py migrate --noinput` |
+| `relation "..." does not exist` | migrations did not run: the Build Command must include `python manage.py migrate --noinput` | |

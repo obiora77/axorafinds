@@ -139,7 +139,7 @@ FIXTURE_DIRS = [BASE_DIR / 'fixtures']
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [BASE_DIR / 'static']  # apps/api/static (the email logo lives here)
+STATICFILES_DIRS = [BASE_DIR / 'static']  
 
 WHITENOISE_USE_FINDERS = True
 MEDIA_URL = '/media/'
@@ -212,7 +212,7 @@ elif EMAIL_HOST:
 elif DEBUG:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 else:
-    EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend'  # not configured: refuse, don't pretend
+    EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend' 
 
 TEAM_EMAIL = os.getenv('TEAM_EMAIL', 'axorafindsteam@gmail.com')
 # With Brevo/Resend this must be an address (or domain) you verified in their dashboard.
