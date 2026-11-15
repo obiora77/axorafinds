@@ -33,8 +33,18 @@ New > Web Service > your repo, then:
 | --- | --- |
 | Root Directory | `apps/api` |
 | Runtime | Python 3 |
-| Build Command | `pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput && (python manage.py createsuperuser --noinput \|\| true)` |
-| Start Command | `gunicorn config.wsgi:application --workers 2 --timeout 60` |
+
+**Build Command** (copy this one line exactly):
+```
+pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput && python manage.py ensure_superuser
+```
+
+**Start Command:**
+```
+gunicorn config.wsgi:application --workers 2 --timeout 60
+```
+
+`ensure_superuser` creates your first staff login from `DJANGO_SUPERUSER_EMAIL` and `DJANGO_SUPERUSER_PASSWORD`, and does nothing if it already exists, so it is safe on every deploy. (An older version of this guide used `|| true` in the Build Command. If you ever see `createsuperuser: error: unrecognized arguments: || true`, you copied that old text with escaped pipes; use the command above, which has no `||`.)
 
 Environment variables:
 
@@ -44,7 +54,7 @@ Environment variables:
 | `DJANGO_DEBUG` | `0` |
 | `DJANGO_SECRET_KEY` | long random string: `python -c "import secrets; print(secrets.token_urlsafe(50))"` |
 | `DATABASE_URL` | the Internal Database URL from step 1 |
-| `DJANGO_SUPERUSER_EMAIL` / `DJANGO_SUPERUSER_PASSWORD` | your first staff login (created at build) |
+| `DJANGO_SUPERUSER_EMAIL` / `DJANGO_SUPERUSER_PASSWORD` | your first staff login (created at build; the password must pass Django's strength check or the build stops and says why) |
 | `EMAIL_PROVIDER` / `BREVO_API_KEY` | from step 2 |
 | `DEFAULT_FROM_EMAIL` | `Axora Finds <your-verified-sender>` |
 | `TEAM_EMAIL` | where staff notifications go |
@@ -150,4 +160,4 @@ Use `-o data.json`, not `> data.json`: PowerShell redirection saves UTF-16, whic
 | `no encryption` / `SSL required` | add `?sslmode=require` to `DATABASE_URL` |
 | `could not translate host name` / timed out | wrong host; an Internal Render address used from outside Render; a firewall blocking Render |
 | `too many connections` | use `--workers 1`, `DB_CONN_MAX_AGE=0`, or the provider's pooled address with `DB_DISABLE_SERVER_SIDE_CURSORS=1` |
-| `relation "..." does not exist` | migrations did not run: the Build Command must include `python manage.py migrate --noinput` | |
+| `relation "..." does not exist` | migrations did not run: the Build Command must include `python manage.py migrate --noinput` |

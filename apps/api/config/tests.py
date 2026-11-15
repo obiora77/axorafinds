@@ -20,6 +20,7 @@ from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.db import IntegrityError, transaction
 from django.test import SimpleTestCase, override_settings
 from django.utils import timezone
@@ -1606,3 +1607,38 @@ class DatabaseSettingsTests(SimpleTestCase):
         result = self.read(DATABASE_URL='mysql://u:p@host/db')
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('must start with postgres', result.stderr)
+
+
+class EnsureSuperuserTests(BaseCase):
+    """`python manage.py ensure_superuser` is the Build Command step that creates the first staff login."""
+
+    def run_command(self, **env):
+        out = io.StringIO()
+        with mock.patch.dict(os.environ, {'DJANGO_SUPERUSER_EMAIL': '', 'DJANGO_SUPERUSER_PASSWORD': '', **env}):
+            call_command('ensure_superuser', stdout=out)
+        return out.getvalue()
+
+    def test_creates_a_staff_login_once_and_never_fails_on_the_next_deploy(self):
+        env = {'DJANGO_SUPERUSER_EMAIL': 'Boss@Axora.test', 'DJANGO_SUPERUSER_PASSWORD': 'Tr0ub4dor-and-3'}
+        self.assertIn('created', self.run_command(**env))
+        boss = User.objects.get(email='boss@axora.test')
+        self.assertTrue(boss.is_staff and boss.is_superuser)
+        self.assertEqual(boss.role, 'staff')
+        self.assertTrue(boss.check_password('Tr0ub4dor-and-3'))
+
+        # deploying again, even with a different password in the variable, changes nothing and does not fail
+        again = self.run_command(DJANGO_SUPERUSER_EMAIL='boss@axora.test', DJANGO_SUPERUSER_PASSWORD='Different-pass-99')
+        self.assertIn('already exists', again)
+        self.assertTrue(User.objects.get(email='boss@axora.test').check_password('Tr0ub4dor-and-3'))
+        self.assertEqual(User.objects.filter(email__iexact='boss@axora.test').count(), 1)
+
+    def test_skips_quietly_when_the_variables_are_not_set(self):
+        before = User.objects.count()
+        self.assertIn('skipping', self.run_command())
+        self.assertEqual(User.objects.count(), before)
+
+    def test_refuses_a_weak_password_with_a_clear_message(self):
+        with self.assertRaises(CommandError) as raised:
+            self.run_command(DJANGO_SUPERUSER_EMAIL='weak@axora.test', DJANGO_SUPERUSER_PASSWORD='12345678')
+        self.assertIn('too weak', str(raised.exception))
+        self.assertFalse(User.objects.filter(email='weak@axora.test').exists())
