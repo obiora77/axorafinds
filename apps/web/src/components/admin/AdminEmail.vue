@@ -85,7 +85,8 @@ onMounted(load)
           <dt class="text-muted">SMTP host / port</dt>
           <dd class="font-medium text-ink">{{ status.host ?? 'not set' }}<span v-if="status.port"> : {{ status.port }}</span></dd>
           <dt class="text-muted">Encryption</dt>
-          <dd class="font-medium text-ink">{{ status.use_ssl ? 'SSL' : status.use_tls ? 'STARTTLS' : 'none' }}</dd>
+          <!-- <dd class="font-medium text-ink">{{ status.use_ssl ? 'SSL' : status.use_tls ? 'STARTTLS' : 'none' }}</dd> -->
+          <dd class="font-medium text-ink">{{ status.encryption ?? (status.use_ssl ? 'SSL' : status.use_tls ? 'STARTTLS' : 'none') }}</dd>
           <dt class="text-muted">From address</dt>
           <dd class="break-all font-medium text-ink">{{ status.from_email }}</dd>
           <dt class="text-muted">Team address</dt>

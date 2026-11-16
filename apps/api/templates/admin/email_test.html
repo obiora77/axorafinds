@@ -16,7 +16,8 @@
     <tr><th scope="row" style="text-align:left;width:220px;">Can send</th><td>{{ status.enabled|yesno:"Yes,No - set EMAIL_HOST and SMTP credentials in .env" }}</td></tr>
     <tr><th scope="row" style="text-align:left;">Backend</th><td><code>{{ status.backend }}</code></td></tr>
     <tr><th scope="row" style="text-align:left;">SMTP host / port</th><td>{{ status.host|default:"not set" }}{% if status.port %} : {{ status.port }}{% endif %}</td></tr>
-    <tr><th scope="row" style="text-align:left;">Encryption</th><td>{% if status.use_ssl %}SSL{% elif status.use_tls %}STARTTLS{% else %}none{% endif %}</td></tr>
+    <!-- <tr><th scope="row" style="text-align:left;">Encryption</th><td>{% if status.use_ssl %}SSL{% elif status.use_tls %}STARTTLS{% else %}none{% endif %}</td></tr> -->
+    <tr><th scope="row" style="text-align:left;">Encryption</th><td>{{ status.encryption|default:"none" }}</td></tr>
     <tr><th scope="row" style="text-align:left;">From</th><td>{{ status.from_email }}</td></tr>
     <tr><th scope="row" style="text-align:left;">Team address</th><td>{{ status.team_email }}</td></tr>
     <tr><th scope="row" style="text-align:left;">Templates</th><td>{{ status.message_count }} messages: {{ status.templates_ready|yesno:"all HTML and text templates found,some template files are missing" }}{% if status.missing_templates %}<br><strong style="color:#ba2121;">{{ status.missing_templates|join:", " }}</strong>{% endif %}</td></tr>

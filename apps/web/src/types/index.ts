@@ -118,6 +118,7 @@ export interface StaffEmailStatus {
   backend: string
   host: string | null
   port: number | null
+  encryption?: string
   use_tls: boolean
   use_ssl: boolean
   from_email: string
